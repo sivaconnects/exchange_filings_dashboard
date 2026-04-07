@@ -2,12 +2,11 @@ name: Exchange Filings Scraper
 
 on:
   schedule:
-    # Every 5 min during NSE/BSE trading + post-market window
-    # 3:30 AM – 12:30 PM UTC  =  9:00 AM – 6:00 PM IST  (Mon–Fri)
+    # Every 5 min: 9 AM – 6 PM IST = 3:30–12:30 UTC, Mon–Fri
     - cron: '*/5 3-12 * * 1-5'
-    # Evening window: catch late filings up to 9 PM IST
+    # Evening: every 15 min till 9 PM IST
     - cron: '*/15 13-15 * * 1-5'
-    # Saturday: 3 runs for SME / delayed filings
+    # Saturday: 3 runs
     - cron: '0 4,6,8 * * 6'
 
   workflow_dispatch:
@@ -19,7 +18,7 @@ on:
         type: choice
         options: ['false', 'true']
 
-# Only one scraper run at a time — queue extras, never cancel
+# Only one run at a time — queue, never cancel
 concurrency:
   group: scraper-run
   cancel-in-progress: false
@@ -27,7 +26,7 @@ concurrency:
 jobs:
   scrape-and-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
 
     permissions:
       contents: write
@@ -50,11 +49,15 @@ jobs:
           cache: 'pip'
           cache-dependency-path: requirements.txt
 
-      # ── 3. Dependencies ────────────────────────────────────────────
+      # ── 3. Install Python dependencies ────────────────────────────
       - name: Install dependencies
         run: pip install -r requirements.txt -q
 
-      # ── 4. Scrape ──────────────────────────────────────────────────
+      # ── 4. Install Playwright browsers (Chromium only) ────────────
+      - name: Install Playwright Chromium
+        run: python -m playwright install chromium --with-deps
+
+      # ── 5. Run scrapers ────────────────────────────────────────────
       - name: Run Exchange Filings Scraper
         id: scraper
         run: |
@@ -64,29 +67,31 @@ jobs:
           PYTHONUNBUFFERED: "1"
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           FORCE_FULL: ${{ github.event.inputs.force_full || 'false' }}
+          # Playwright needs display on some Linux setups
+          DISPLAY: ":99"
 
-      # ── 5. Stage + detect changes ──────────────────────────────────
+      # ── 6. Stage files and detect changes ─────────────────────────
       - name: Stage data files
         id: stage
         run: |
           git add data/ docs/data.json || true
           CHANGED=$(git diff --cached --name-only | wc -l)
           echo "changed=$CHANGED" >> $GITHUB_OUTPUT
-          echo "Staged files changed: $CHANGED"
+          echo "Changed files: $CHANGED"
           git diff --cached --name-only
 
-      # ── 6. Commit (only if something changed) ─────────────────────
+      # ── 7. Commit (only if data changed) ──────────────────────────
       - name: Commit new data
         if: steps.stage.outputs.changed > 0
         run: |
           git config --local user.email "filings-bot@github-actions"
           git config --local user.name "Exchange Filings Bot"
-          git commit -m "📊 Filings — $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')"
+          git commit -m "📊 $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 7. Deploy to GitHub Pages ──────────────────────────────────
+      # ── 8. Deploy to GitHub Pages ──────────────────────────────────
       - name: Deploy to GitHub Pages
         if: steps.stage.outputs.changed > 0
         uses: peaceiris/actions-gh-pages@v4
@@ -96,9 +101,9 @@ jobs:
           publish_branch: gh-pages
           force_orphan: false
           keep_files: true
-          commit_message: "🌐 Dashboard — $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')"
+          commit_message: "🌐 $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')"
 
-      # ── 8. Job summary ─────────────────────────────────────────────
+      # ── 9. Job Summary ─────────────────────────────────────────────
       - name: Job summary
         if: always()
         run: |
@@ -117,8 +122,6 @@ jobs:
               print(f'| NSE Filings | {s.get(\"nse_filings\", 0)} |')
               print(f'| BSE Filings | {s.get(\"bse_filings\", 0)} |')
               print(f'| Opportunities | {s.get(\"opportunities_found\", 0)} |')
-              print(f'| High Opps | {s.get(\"high_opportunity_count\", 0)} |')
-              print(f'| Insights | {s.get(\"insights_generated\", 0)} |')
           except Exception as e:
               print(f'| Error | {e} |')
             " >> $GITHUB_STEP_SUMMARY || true

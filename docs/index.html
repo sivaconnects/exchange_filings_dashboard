@@ -3,1236 +3,1328 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Exchange Filings — NSE + BSE Live Dashboard</title>
+<title>India Filings — NSE + BSE Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"/>
 <style>
-/* ═══ DESIGN TOKENS ════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   CLAUDE-STYLE DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════ */
 :root {
-  --bg:       #0a0a0f;
-  --surface:  #111118;
-  --surface2: #16161f;
-  --surface3: #1c1c28;
-  --border:   #2a2a3a;
-  --border2:  #1f1f2e;
-  --text:     #e8e8f0;
-  --text2:    #a0a0b8;
-  --text3:    #666680;
-  --accent:   #7b8cff;
-  --accent2:  #5b6bdd;
-  --green:    #4ade80;
-  --green2:   #22c55e;
-  --orange:   #fb923c;
-  --red:      #f87171;
-  --purple:   #c084fc;
-  --teal:     #2dd4bf;
-  --yellow:   #fbbf24;
-  --nse:      #00e5b4;
-  --bse:      #ff7043;
-  --sme:      #b47eff;
-  --eq:       #7b8cff;
-  --glow-accent: rgba(123,140,255,.08);
-  --glow-green:  rgba(74,222,128,.08);
+  --bg:        #1a1412;
+  --bg2:       #211d1a;
+  --bg3:       #282320;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.12);
+  --text:      #e8e2dc;
+  --text2:     #b5afa8;
+  --text3:     #7d7872;
+  --accent:    #c96442;
+  --accent2:   #e07850;
+  --green:     #5cb85c;
+  --orange:    #e0983a;
+  --red:       #d95454;
+  --blue:      #5b9bd5;
+  --purple:    #9b7fd4;
+  --teal:      #4dab9a;
+  --nse:       #4dab9a;
+  --bse:       #c96442;
+  --radius:    10px;
+  --radius-sm: 6px;
+  --shadow:    0 2px 12px rgba(0,0,0,0.4);
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0 }
+html { scroll-behavior:smooth }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+a { color: var(--accent2); text-decoration: none }
+a:hover { text-decoration: underline }
+::-webkit-scrollbar { width: 5px; height: 5px }
+::-webkit-scrollbar-track { background: var(--bg) }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px }
+::-webkit-scrollbar-thumb:hover { background: var(--text3) }
+
+/* ── HEADER ── */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(26,20,18,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  height: 54px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.header-brand {
+  display: flex; align-items: center; gap: 10px;
+}
+.brand-icon {
+  width: 30px; height: 30px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+}
+.brand-name { font-size: 14px; font-weight: 600; color: var(--text) }
+.brand-tag { font-size: 10px; color: var(--text3); letter-spacing: .3px }
+.header-meta {
+  display: flex; align-items: center; gap: 12px;
+}
+.live-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(93,185,92,0.1);
+  border: 1px solid rgba(93,185,92,0.2);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px; color: var(--green);
+}
+.live-dot {
+  width: 6px; height: 6px; background: var(--green);
+  border-radius: 50%;
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+.update-time { font-size: 11px; color: var(--text3) }
+.btn-refresh {
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text2); border-radius: var(--radius-sm);
+  padding: 5px 12px; font-size: 11px; cursor: pointer;
+  transition: all .15s;
+}
+.btn-refresh:hover { border-color: var(--accent); color: var(--accent) }
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+.stat-item {
+  padding: 14px 20px;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.stat-item:last-child { border-right: none }
+.stat-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.stat-item:hover::after { opacity: 1 }
+.stat-item:nth-child(1)::after { background: var(--accent) }
+.stat-item:nth-child(2)::after { background: var(--nse) }
+.stat-item:nth-child(3)::after { background: var(--bse) }
+.stat-item:nth-child(4)::after { background: var(--green) }
+.stat-item:nth-child(5)::after { background: var(--orange) }
+.stat-item:nth-child(6)::after { background: var(--purple) }
+.stat-num { font-size: 22px; font-weight: 700; line-height: 1; margin-bottom: 3px }
+.stat-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px }
+
+/* ── MAIN NAV ── */
+.main-nav {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  overflow-x: auto;
+  background: var(--bg2);
+}
+.nav-tab {
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 12px; font-weight: 500;
+  color: var(--text3);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all .15s;
+  display: flex; align-items: center; gap: 6px;
+  user-select: none;
+}
+.nav-tab:hover { color: var(--text2) }
+.nav-tab.on { color: var(--text); border-bottom-color: var(--accent) }
+.nav-count {
+  background: var(--bg3); border-radius: 20px;
+  padding: 1px 7px; font-size: 10px;
+  color: var(--text3); font-weight: 400;
+  transition: background .15s, color .15s;
+}
+.nav-tab.on .nav-count { background: rgba(201,100,66,.15); color: var(--accent) }
+
+/* ── LAYOUT ── */
+.body-wrap { display: flex; min-height: calc(100vh - 130px) }
+.sidebar {
+  width: 210px; flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+.main-content { flex: 1; min-width: 0; overflow: hidden }
+
+/* ── SIDEBAR ── */
+.seg-switch {
+  display: flex; gap: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.seg-btn {
+  flex: 1; padding: 5px 6px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text3);
+  font-size: 11px; font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.seg-btn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm) }
+.seg-btn:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-left: none }
+.seg-btn.active { background: var(--accent); border-color: var(--accent); color: #fff }
+.sb-section { padding: 6px 0 }
+.sb-label {
+  font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .8px;
+  color: var(--text3);
+  padding: 6px 14px 3px;
+}
+.sb-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 14px;
+  cursor: pointer;
+  color: var(--text3); font-size: 12px;
+  border-left: 2px solid transparent;
+  transition: all .12s;
+}
+.sb-item:hover { color: var(--text2); background: rgba(255,255,255,.03) }
+.sb-item.on { color: var(--text); border-left-color: var(--accent); background: rgba(201,100,66,.07) }
+.sb-badge {
+  background: var(--bg3); border-radius: 20px;
+  padding: 1px 7px; font-size: 10px;
+  min-width: 22px; text-align: center;
+  color: var(--text3);
 }
 
-/* ═══ RESET + BASE ═════════════════════════════════════════════════════ */
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{
-  background:var(--bg);color:var(--text);
-  font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',system-ui,sans-serif;
-  font-size:13px;line-height:1.5;min-height:100vh;
-}
-a{color:var(--accent);text-decoration:none}
-a:hover{color:var(--text);text-decoration:none}
-button{cursor:pointer;font-family:inherit}
-input,select{font-family:inherit}
+/* ── PANES ── */
+.pane { display: none }
+.pane.on { display: flex; flex-direction: column; height: 100% }
 
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-::-webkit-scrollbar-thumb:hover{background:var(--border2)}
-
-/* ═══ HEADER ════════════════════════════════════════════════════════════ */
-header {
-  background:var(--surface);
-  border-bottom:1px solid var(--border);
-  padding:0 24px;
-  height:52px;
-  display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:300;
-  backdrop-filter:blur(12px);
+/* ── SECTION HEADER ── */
+.sec-header {
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px;
+  background: var(--bg2);
+  flex-shrink: 0;
 }
-.logo{display:flex;align-items:center;gap:12px}
-.logo-mark{
-  width:32px;height:32px;
-  background:linear-gradient(135deg,var(--accent),var(--teal));
-  border-radius:8px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:15px;flex-shrink:0;
+.sec-title { font-size: 14px; font-weight: 600 }
+.sec-sub { font-size: 11px; color: var(--text3); margin-top: 1px }
+.sec-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+.search-box {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); color: var(--text);
+  padding: 5px 10px; font-size: 12px; font-family: inherit;
+  width: 180px; outline: none; transition: border-color .15s;
 }
-.logo-text h1{font-size:14px;font-weight:700;letter-spacing:-.2px;line-height:1}
-.logo-text p{font-size:10px;color:var(--text3);margin-top:2px;letter-spacing:.2px}
-
-.hdr-right{display:flex;align-items:center;gap:8px}
-.hdr-chip{
-  display:flex;align-items:center;gap:5px;
-  background:var(--surface2);border:1px solid var(--border);
-  border-radius:20px;padding:4px 10px;font-size:11px;color:var(--text2);
-}
-.hdr-chip .val{color:var(--text);font-weight:600}
-.hdr-chip .val.g{color:var(--green)}
-
-#last-updated{font-size:10px;color:var(--text3)}
-
-.btn{
-  border:none;border-radius:6px;padding:5px 12px;
-  font-size:11px;font-weight:600;transition:all .15s;
-}
-.btn-primary{background:var(--accent);color:#fff}
-.btn-primary:hover{background:var(--accent2)}
-
-.live-dot{
-  width:6px;height:6px;background:var(--green2);
-  border-radius:50%;display:inline-block;
-  box-shadow:0 0 6px var(--green2);
-  animation:pulse 2.5s ease infinite;
-}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
-
-/* ═══ STATS STRIP ═══════════════════════════════════════════════════════ */
-.stats-strip{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
-  gap:0;
-  border-bottom:1px solid var(--border);
-  background:var(--surface2);
-}
-.stat-item{
-  padding:10px 16px;
-  border-right:1px solid var(--border);
-  position:relative;overflow:hidden;
-}
-.stat-item:last-child{border-right:none}
-.stat-item::after{
-  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
-  background:var(--c,transparent);opacity:.6;
-}
-.stat-item .n{font-size:22px;font-weight:800;line-height:1;letter-spacing:-1px}
-.stat-item .l{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-top:3px}
-
-/* ═══ MAIN NAV ══════════════════════════════════════════════════════════ */
-.main-nav{
-  background:var(--surface);
-  border-bottom:1px solid var(--border);
-  display:flex;overflow-x:auto;padding:0 20px;
-  position:sticky;top:52px;z-index:200;
-}
-.mnav{
-  padding:11px 14px;cursor:pointer;
-  border-bottom:2px solid transparent;
-  color:var(--text3);font-size:11px;font-weight:500;
-  white-space:nowrap;transition:color .15s,border-color .15s;
-  display:flex;align-items:center;gap:5px;user-select:none;
-}
-.mnav:hover{color:var(--text2)}
-.mnav.on{color:var(--accent);border-bottom-color:var(--accent)}
-.mnav .cnt{
-  background:var(--surface2);border-radius:10px;
-  padding:1px 6px;font-size:9px;font-weight:700;min-width:18px;text-align:center;
+.search-box:focus { border-color: var(--accent) }
+.search-box::placeholder { color: var(--text3) }
+.filter-sel {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); color: var(--text2);
+  padding: 5px 8px; font-size: 11px; font-family: inherit;
+  outline: none; cursor: pointer;
 }
 
-/* ═══ BODY LAYOUT ═══════════════════════════════════════════════════════ */
-.body-wrap{display:flex;min-height:calc(100vh - 120px)}
-.sidebar{
-  width:210px;flex-shrink:0;
-  background:var(--surface);border-right:1px solid var(--border);
-  overflow-y:auto;position:sticky;top:88px;height:calc(100vh - 88px);
+/* ── SUB TABS ── */
+.sub-tabs {
+  display: flex; overflow-x: auto;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  flex-shrink: 0;
 }
-.content{flex:1;overflow:hidden;min-width:0}
+.sub-tab {
+  padding: 9px 14px;
+  cursor: pointer; font-size: 11px; font-weight: 500;
+  color: var(--text3); white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: all .15s;
+}
+.sub-tab:hover { color: var(--text2) }
+.sub-tab.on { color: var(--text); border-bottom-color: var(--accent) }
 
-/* ═══ SIDEBAR ═══════════════════════════════════════════════════════════ */
-.seg-row{display:flex;gap:4px;padding:10px;border-bottom:1px solid var(--border)}
-.seg-btn{
-  flex:1;padding:5px 4px;border:1px solid var(--border);
-  background:transparent;color:var(--text3);
-  border-radius:6px;font-size:11px;font-weight:700;transition:all .15s;
+/* ── TABLE ── */
+.tbl-wrap { overflow: auto; flex: 1 }
+table { width: 100%; border-collapse: collapse }
+thead th {
+  background: var(--bg2);
+  padding: 9px 14px;
+  text-align: left; white-space: nowrap;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .5px;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1;
 }
-.seg-btn.on.eq{background:var(--eq);color:#fff;border-color:var(--eq);box-shadow:0 0 10px rgba(123,140,255,.3)}
-.seg-btn.on.sme{background:var(--sme);color:#fff;border-color:var(--sme);box-shadow:0 0 10px rgba(180,126,255,.3)}
+tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  transition: background .1s;
+}
+tbody tr:hover { background: rgba(255,255,255,.025) }
+td { padding: 9px 14px; vertical-align: top; font-size: 12px }
+.t-sym { font-weight: 600; color: var(--accent2); white-space: nowrap }
+.t-company { color: var(--text); max-width: 180px; word-break: break-word }
+.t-subject { color: var(--text2); max-width: 280px; font-size: 11px; line-height: 1.5 }
+.t-date { color: var(--text3); font-size: 11px; white-space: nowrap }
 
-.sb-section{margin:4px 0}
-.sb-label{
-  font-size:9px;font-weight:700;text-transform:uppercase;
-  letter-spacing:.8px;color:var(--text3);padding:8px 12px 3px;
+/* ── BADGES ── */
+.badge {
+  display: inline-block;
+  border-radius: 4px; padding: 1px 7px;
+  font-size: 9px; font-weight: 700; letter-spacing: .3px;
+  white-space: nowrap; vertical-align: middle;
 }
-.sb-item{
-  padding:7px 12px;cursor:pointer;
-  display:flex;align-items:center;justify-content:space-between;
-  border-left:2px solid transparent;color:var(--text2);
-  font-size:12px;transition:all .12s;
-}
-.sb-item:hover{background:var(--surface2);color:var(--text)}
-.sb-item.on{color:var(--text);border-left-color:var(--accent);background:var(--glow-accent)}
-.sb-cnt{
-  font-size:9px;background:var(--surface3);
-  border-radius:8px;padding:1px 6px;min-width:20px;text-align:center;color:var(--text3);
-}
+.b-nse  { background: rgba(77,171,154,.12); color: var(--nse);    border: 1px solid rgba(77,171,154,.25) }
+.b-bse  { background: rgba(201,100,66,.12); color: var(--accent);  border: 1px solid rgba(201,100,66,.25) }
+.b-eq   { background: rgba(91,155,213,.12); color: var(--blue);    border: 1px solid rgba(91,155,213,.25) }
+.b-sme  { background: rgba(155,127,212,.12); color: var(--purple); border: 1px solid rgba(155,127,212,.25) }
+.b-bm   { background: rgba(224,152,58,.12); color: var(--orange);  border: 1px solid rgba(224,152,58,.25) }
+.b-fr   { background: rgba(93,185,92,.12);  color: var(--green);   border: 1px solid rgba(93,185,92,.25) }
+.b-ca   { background: rgba(155,127,212,.12);color: var(--purple);  border: 1px solid rgba(155,127,212,.25) }
+.b-ins  { background: rgba(217,84,84,.12);  color: var(--red);     border: 1px solid rgba(217,84,84,.25) }
+.b-agm  { background: rgba(224,224,58,.12); color: #d4c800;        border: 1px solid rgba(224,224,58,.25) }
 
-/* ═══ SECTION HEADER ════════════════════════════════════════════════════ */
-.sec-hdr{
-  padding:12px 18px 10px;
-  display:flex;align-items:center;justify-content:space-between;
-  flex-wrap:wrap;gap:8px;
-  border-bottom:1px solid var(--border);
-  background:var(--surface);
-  position:sticky;top:88px;z-index:10;
+/* ── ATTACHMENT LINK ── */
+.att-btn {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(201,100,66,.1); border: 1px solid rgba(201,100,66,.2);
+  border-radius: 4px; padding: 2px 8px;
+  font-size: 10px; color: var(--accent2);
+  transition: background .15s;
+  white-space: nowrap;
 }
-.sec-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px}
-.sec-sub{font-size:10px;color:var(--text3);margin-top:2px}
-.filters{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.search{
-  background:var(--surface2);border:1px solid var(--border);
-  border-radius:6px;padding:5px 10px;color:var(--text);
-  font-size:11px;outline:none;width:175px;transition:border-color .15s;
-}
-.search:focus{border-color:var(--accent)}
-.search::placeholder{color:var(--text3)}
-select.flt{
-  background:var(--surface2);border:1px solid var(--border);color:var(--text2);
-  padding:5px 8px;border-radius:6px;font-size:11px;outline:none;
-}
+.att-btn:hover { background: rgba(201,100,66,.2); text-decoration: none }
 
-/* ═══ PANES ══════════════════════════════════════════════════════════════ */
-.pane{display:none}.pane.on{display:block}
+/* ── EMPTY STATE ── */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 60px 20px; color: var(--text3);
+  text-align: center;
+}
+.empty-icon { font-size: 36px; margin-bottom: 12px; opacity: .5 }
+.empty-title { font-size: 14px; color: var(--text2); margin-bottom: 6px; font-weight: 500 }
+.empty-desc { font-size: 12px; max-width: 320px; line-height: 1.7 }
 
-/* ═══ TABLE ══════════════════════════════════════════════════════════════ */
-.tbl-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 170px)}
-table{width:100%;border-collapse:collapse}
-thead th{
-  background:var(--surface2);padding:8px 12px;
-  text-align:left;font-size:9px;font-weight:700;
-  text-transform:uppercase;letter-spacing:.5px;color:var(--text3);
-  border-bottom:1px solid var(--border);
-  position:sticky;top:0;white-space:nowrap;z-index:5;
+/* ── OPPORTUNITIES ── */
+.opp-hero {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 1px; background: var(--border);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
-tbody tr{border-bottom:1px solid var(--border2);transition:background .08s}
-tbody tr:hover{background:rgba(255,255,255,.018)}
-td{padding:8px 12px;vertical-align:top;font-size:12px}
+.opp-stat {
+  background: var(--bg2); padding: 16px;
+  text-align: center;
+}
+.opp-num { font-size: 26px; font-weight: 700; line-height: 1 }
+.opp-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; margin-top: 3px; letter-spacing: .4px }
+.opp-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px; padding: 16px 20px;
+  overflow-y: auto;
+}
+.opp-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px;
+  border-left: 3px solid var(--border2);
+  transition: border-color .2s;
+}
+.opp-card:hover { border-color: var(--accent) }
+.opp-card.hi  { border-left-color: var(--green) }
+.opp-card.mo  { border-left-color: var(--orange) }
+.opp-card.wt  { border-left-color: var(--blue) }
+.opp-card.ca  { border-left-color: var(--red) }
+.opp-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px }
+.opp-sym { font-size: 15px; font-weight: 700; color: var(--accent2) }
+.opp-co  { font-size: 11px; color: var(--text3); margin-top: 1px }
+.opp-score { font-size: 24px; font-weight: 800 }
+.sc-hi { color: var(--green) }
+.sc-mo { color: var(--orange) }
+.sc-wt { color: var(--blue) }
+.sc-ca { color: var(--red) }
+.opp-level { font-size: 11px; font-weight: 600; margin-bottom: 8px }
+.sig-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px }
+.sig-chip {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 2px 8px; font-size: 10px; color: var(--text3);
+}
+.opp-foot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap }
 
-.td-sym{font-weight:700;color:var(--accent);white-space:nowrap;font-size:12px}
-.td-co{color:var(--text);max-width:160px;word-break:break-word;font-size:11px}
-.td-subj{color:var(--text2);max-width:260px;font-size:11px;line-height:1.5}
-.td-date{color:var(--text3);font-size:10px;white-space:nowrap}
-.td-att{white-space:nowrap}
-.att-btn{
-  display:inline-flex;align-items:center;gap:3px;
-  background:var(--glow-accent);border:1px solid rgba(123,140,255,.2);
-  border-radius:4px;padding:2px 7px;font-size:9px;color:var(--accent);
-  transition:all .12s;font-weight:500;
+/* ── IMPORTANT FILINGS ── */
+.imp-list { overflow-y: auto; flex: 1 }
+.imp-row {
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  display: grid; grid-template-columns: 100px 1fr auto;
+  gap: 12px; align-items: start;
+  transition: background .1s;
 }
-.att-btn:hover{background:rgba(123,140,255,.15);color:var(--text)}
+.imp-row:hover { background: rgba(255,255,255,.02) }
+.imp-sym { font-weight: 700; color: var(--accent2); font-size: 13px }
+.imp-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px }
+.imp-subj { font-size: 12px; color: var(--text); line-height: 1.5; margin-bottom: 3px }
+.imp-co   { font-size: 11px; color: var(--text3) }
+.imp-date { font-size: 10px; color: var(--text3); white-space: nowrap; text-align: right }
+.cat-dot  { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px }
 
-/* ═══ EXCHANGE BADGES ════════════════════════════════════════════════════ */
-.xbg{border-radius:3px;padding:1px 5px;font-size:8px;font-weight:800;letter-spacing:.3px;white-space:nowrap}
-.xbg-nse{background:rgba(0,229,180,.1);color:var(--nse);border:1px solid rgba(0,229,180,.2)}
-.xbg-bse{background:rgba(255,112,67,.1);color:var(--bse);border:1px solid rgba(255,112,67,.2)}
-.xbg-eq{background:rgba(123,140,255,.1);color:var(--eq);border:1px solid rgba(123,140,255,.2)}
-.xbg-sme{background:rgba(180,126,255,.1);color:var(--sme);border:1px solid rgba(180,126,255,.2)}
-.xbg-cat{background:var(--surface3);border:1px solid var(--border);color:var(--text3);border-radius:3px;padding:1px 5px;font-size:8px}
-.xbg-ins{background:rgba(251,146,60,.1);color:var(--orange);border:1px solid rgba(251,146,60,.2);border-radius:3px;padding:1px 5px;font-size:8px;font-weight:700}
-.xbg-agm{background:rgba(251,191,36,.1);color:var(--yellow);border:1px solid rgba(251,191,36,.2)}
-.xbg-list{background:rgba(45,212,191,.1);color:var(--teal);border:1px solid rgba(45,212,191,.2)}
-
-/* ═══ EMPTY / LOADER ══════════════════════════════════════════════════════ */
-.empty{text-align:center;padding:60px 24px;color:var(--text3)}
-.empty .ei{font-size:36px;margin-bottom:10px;opacity:.5}
-.empty .et{font-size:13px;color:var(--text2);margin-bottom:6px;font-weight:500}
-.empty .ed{font-size:11px;max-width:320px;margin:0 auto;line-height:1.7}
-.loader{display:flex;align-items:center;justify-content:center;gap:10px;padding:60px;color:var(--text3)}
-.spin{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* ═══ IMPORTANT FILINGS ══════════════════════════════════════════════════ */
-.imp-item{
-  padding:12px 18px;border-bottom:1px solid var(--border2);
-  display:grid;grid-template-columns:80px 1fr 100px;
-  gap:12px;align-items:start;transition:background .08s;
+/* ── INSIGHTS ── */
+.ins-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 12px; padding: 16px 20px; overflow-y: auto;
 }
-.imp-item:hover{background:rgba(255,255,255,.015)}
-.imp-sym{font-weight:700;color:var(--accent);font-size:13px}
-.imp-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
-.imp-subj{font-size:12px;color:var(--text);line-height:1.5;margin-bottom:3px}
-.imp-co{font-size:10px;color:var(--text3)}
-.imp-date{font-size:10px;color:var(--text3);text-align:right}
-.cat-pip{width:5px;height:5px;border-radius:50%;display:inline-block;margin-right:5px}
-.p-bm{background:var(--orange)}.p-fr{background:var(--green)}.p-ca{background:var(--purple)}.p-it{background:var(--red)}
-
-/* ═══ OPPORTUNITIES ═══════════════════════════════════════════════════════ */
-.opp-hero{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
-  gap:0;border-bottom:1px solid var(--border);
+.ins-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
 }
-.oh-item{
-  padding:14px 16px;border-right:1px solid var(--border);text-align:center;
+.ins-card-hdr {
+  padding: 11px 14px; display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; border-bottom: 1px solid var(--border);
+  user-select: none; transition: background .12s;
 }
-.oh-item:last-child{border-right:none}
-.oh-item .n{font-size:28px;font-weight:800;line-height:1;letter-spacing:-1px}
-.oh-item .l{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
-
-.opp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;padding:14px}
-.opp-card{
-  background:var(--surface2);border:1px solid var(--border);
-  border-radius:10px;padding:14px;transition:border-color .2s,transform .15s;
-  border-left:3px solid transparent;
+.ins-card-hdr:hover { background: var(--bg3) }
+.ins-card-title { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px }
+.ins-cnt {
+  background: var(--bg3); border-radius: 20px;
+  padding: 1px 8px; font-size: 10px; color: var(--text3);
 }
-.opp-card:hover{border-color:rgba(123,140,255,.4);transform:translateY(-1px)}
-.opp-card.hi{border-left-color:var(--green)}
-.opp-card.mo{border-left-color:var(--orange)}
-.opp-card.wt{border-left-color:var(--accent)}
-.opp-card.rf{border-left-color:var(--red)}
-
-.opp-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
-.opp-sym{font-size:14px;font-weight:700;color:var(--accent)}
-.opp-co{font-size:10px;color:var(--text3);margin-top:2px}
-.opp-score{font-size:22px;font-weight:900;line-height:1}
-.sc-hi{color:var(--green)}.sc-mo{color:var(--orange)}.sc-wt{color:var(--accent)}.sc-rf{color:var(--red)}
-.opp-level{font-size:10px;font-weight:600;margin-bottom:8px}
-.sig-wrap{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px}
-.sig-chip{
-  background:rgba(255,255,255,.04);border:1px solid var(--border2);
-  border-radius:10px;padding:2px 7px;font-size:9px;color:var(--text3);
+.ins-body { display: none; max-height: 320px; overflow-y: auto }
+.ins-body.open { display: block }
+.ins-item {
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
 }
-.opp-foot{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
-
-/* ═══ SUB-TABS ════════════════════════════════════════════════════════════ */
-.sub-tabs{
-  display:flex;overflow-x:auto;padding:0 18px;
-  background:var(--surface2);border-bottom:1px solid var(--border);
+.ins-item:last-child { border-bottom: none }
+.ins-headline { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 3px }
+.ins-detail { font-size: 11px; color: var(--text2); line-height: 1.5 }
+.ins-foot { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; margin-top: 5px }
+.signal-tag {
+  border-radius: 4px; padding: 1px 6px;
+  font-size: 9px; font-weight: 700;
 }
-.stab{
-  padding:8px 12px;cursor:pointer;
-  border-bottom:2px solid transparent;
-  color:var(--text3);font-size:11px;white-space:nowrap;
-  transition:all .15s;
-}
-.stab:hover{color:var(--text2)}
-.stab.on{color:var(--accent);border-bottom-color:var(--accent)}
-
-/* ═══ INSIGHTS ════════════════════════════════════════════════════════════ */
-.ins-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px;padding:14px}
-.ins-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.ins-hdr{
-  padding:11px 13px;display:flex;align-items:center;justify-content:space-between;
-  cursor:pointer;user-select:none;transition:background .1s;
-}
-.ins-hdr:hover{background:var(--surface3)}
-.ins-title{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
-.ins-badge{
-  background:var(--surface3);border:1px solid var(--border);
-  border-radius:8px;padding:1px 7px;font-size:9px;font-weight:700;color:var(--text3);
-}
-.ins-body{padding:0 13px 10px;display:none;max-height:300px;overflow-y:auto}
-.ins-body.open{display:block}
-.ins-row{padding:8px 0;border-bottom:1px solid var(--border2)}
-.ins-row:last-child{border-bottom:none}
-.ins-sym-row{display:flex;gap:5px;align-items:center;margin-bottom:3px}
-.ins-sym{font-weight:700;color:var(--accent);font-size:12px}
-.ins-headline{font-size:11px;font-weight:500;color:var(--text);line-height:1.4;margin-bottom:3px}
-.ins-detail{font-size:10px;color:var(--text3);line-height:1.5}
-.ins-foot{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
-.ins-empty{font-size:10px;color:var(--text3);text-align:center;padding:16px 0}
-.tag-chip{background:var(--surface3);border-radius:3px;padding:1px 5px;font-size:8px;color:var(--text3)}
-.att-link{
-  display:inline-flex;align-items:center;gap:3px;
-  background:var(--glow-accent);border:1px solid rgba(123,140,255,.2);
-  border-radius:4px;padding:1px 6px;font-size:8px;color:var(--accent);
+.s-pos { background: rgba(93,185,92,.12); color: var(--green); border: 1px solid rgba(93,185,92,.25) }
+.s-neg { background: rgba(217,84,84,.12); color: var(--red); border: 1px solid rgba(217,84,84,.25) }
+.s-neu { background: rgba(125,120,114,.12); color: var(--text3); border: 1px solid var(--border2) }
+.tag-chip {
+  background: var(--bg3); border-radius: 4px;
+  padding: 1px 5px; font-size: 9px; color: var(--text3);
 }
 
-.sig-tag{border-radius:3px;padding:1px 5px;font-size:8px;font-weight:700}
-.st-pos{background:rgba(74,222,128,.12);color:var(--green);border:1px solid rgba(74,222,128,.2)}
-.st-neg{background:rgba(248,113,113,.12);color:var(--red);border:1px solid rgba(248,113,113,.2)}
-.st-neu{background:var(--surface3);color:var(--text3);border:1px solid var(--border)}
-.st-wt{background:rgba(123,140,255,.1);color:var(--accent);border:1px solid rgba(123,140,255,.2)}
-
-/* ═══ PHILOSOPHY ══════════════════════════════════════════════════════════ */
-.phi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:14px}
-.phi-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.phi-hdr{padding:14px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--border)}
-.phi-av{
-  width:38px;height:38px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:16px;font-weight:800;flex-shrink:0;
+/* ── PHILOSOPHY CARDS ── */
+.phi-wrap { padding: 16px 20px }
+.phi-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
 }
-.phi-name{font-size:13px;font-weight:700}
-.phi-tag{font-size:10px;color:var(--text3);margin-top:2px;font-style:italic}
-.phi-criteria{padding:10px 14px;border-bottom:1px solid var(--border2)}
-.phi-crit-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:5px}
-.phi-crit-item{font-size:10px;color:var(--text2);padding:2px 0;display:flex;align-items:center;gap:5px}
-.phi-crit-item::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0}
-.phi-picks{padding:10px 14px;max-height:250px;overflow-y:auto}
-.phi-picks-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:6px}
-
-/* ═══ ABOUT ═══════════════════════════════════════════════════════════════ */
-.about-wrap{padding:16px 18px;max-width:1000px}
-.info-box{
-  background:var(--glow-accent);border:1px solid rgba(123,140,255,.2);
-  border-radius:8px;padding:12px 16px;font-size:12px;line-height:1.7;
-  margin-bottom:14px;
+.phi-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
 }
-.info-box strong{color:var(--accent)}
-.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-bottom:14px}
-.about-card{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:14px}
-.about-num{font-size:22px;font-weight:800;color:var(--accent);margin-bottom:5px}
-.about-title{font-size:12px;font-weight:600;margin-bottom:4px}
-.about-desc{font-size:11px;color:var(--text3);line-height:1.6}
+.phi-hdr {
+  padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.phi-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700; flex-shrink: 0;
+  background: var(--bg3);
+}
+.phi-name { font-size: 13px; font-weight: 700 }
+.phi-sub  { font-size: 10px; color: var(--text3); margin-top: 1px }
+.phi-body { padding: 10px 16px; max-height: 260px; overflow-y: auto }
+.phi-criteria { padding: 10px 16px; border-bottom: 1px solid var(--border) }
+.phi-crit-lbl {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--text3); margin-bottom: 6px;
+}
+.phi-crit-item { font-size: 11px; color: var(--text2); padding: 2px 0 }
 
-/* ═══ DIVIDER ═════════════════════════════════════════════════════════════ */
-.divider{height:1px;background:var(--border);margin:0}
+/* ── ABOUT ── */
+.about-wrap { padding: 20px; overflow-y: auto; max-height: calc(100vh - 200px) }
+.info-box {
+  background: rgba(201,100,66,.06); border: 1px solid rgba(201,100,66,.15);
+  border-radius: var(--radius); padding: 14px 18px;
+  font-size: 12px; line-height: 1.8; margin-bottom: 16px;
+}
+.info-box strong { color: var(--accent2) }
+.about-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.about-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+}
+.about-num { font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 6px }
+.about-title { font-size: 13px; font-weight: 600; margin-bottom: 4px }
+.about-desc { font-size: 11px; color: var(--text3); line-height: 1.7 }
 
-@media(max-width:768px){
-  .body-wrap{flex-direction:column}
-  .sidebar{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border)}
-  .opp-grid,.ins-grid{grid-template-columns:1fr}
-  .imp-item{grid-template-columns:1fr}
-  .phi-grid{grid-template-columns:1fr}
-  .hdr-chip{display:none}
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  .body-wrap { flex-direction: column }
+  .sidebar { width: 100%; max-height: 200px }
+  .stats-bar { grid-template-columns: repeat(3, 1fr) }
+  .opp-grid, .ins-grid { grid-template-columns: 1fr; padding: 10px }
+  .phi-grid { grid-template-columns: 1fr }
+  .imp-row { grid-template-columns: 1fr }
 }
 </style>
 </head>
 <body>
 
-<!-- ═══ HEADER ══════════════════════════════════════════════════════════ -->
-<header>
-  <div class="logo">
-    <div class="logo-mark">📊</div>
-    <div class="logo-text">
-      <h1>Exchange Filings</h1>
-      <p><span class="live-dot"></span>&nbsp;NSE · BSE · Live · Open Source</p>
+<!-- ══ HEADER ══════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-brand">
+    <div class="brand-icon">📊</div>
+    <div>
+      <div class="brand-name">India Exchange Filings</div>
+      <div class="brand-tag">NSE · BSE · Live · Open Source · Free</div>
     </div>
   </div>
-  <div class="hdr-right">
-    <div class="hdr-chip">NSE <span class="val" id="h-nse">–</span></div>
-    <div class="hdr-chip">BSE <span class="val" id="h-bse">–</span></div>
-    <div class="hdr-chip">🎯 <span class="val g" id="h-opp">–</span></div>
-    <span id="last-updated">Loading…</span>
-    <button class="btn btn-primary" onclick="loadData()">↻ Refresh</button>
+  <div class="header-meta">
+    <div class="live-pill"><span class="live-dot"></span> Live</div>
+    <span class="update-time" id="update-time">Loading...</span>
+    <button class="btn-refresh" onclick="loadData()">↻ Refresh</button>
   </div>
 </header>
 
-<!-- ═══ STATS STRIP ══════════════════════════════════════════════════════ -->
-<div class="stats-strip">
-  <div class="stat-item" style="--c:var(--accent)">
-    <div class="n" id="s-total" style="color:var(--accent)">–</div>
-    <div class="l">Total Filings</div>
+<!-- ══ STATS BAR ═══════════════════════════════════════════════ -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-num" id="s-total" style="color:var(--accent)">–</div>
+    <div class="stat-lbl">Total Filings</div>
   </div>
-  <div class="stat-item" style="--c:var(--nse)">
-    <div class="n" id="s-nse" style="color:var(--nse)">–</div>
-    <div class="l">NSE</div>
+  <div class="stat-item">
+    <div class="stat-num" id="s-nse" style="color:var(--nse)">–</div>
+    <div class="stat-lbl">NSE</div>
   </div>
-  <div class="stat-item" style="--c:var(--bse)">
-    <div class="n" id="s-bse" style="color:var(--bse)">–</div>
-    <div class="l">BSE</div>
+  <div class="stat-item">
+    <div class="stat-num" id="s-bse" style="color:var(--bse)">–</div>
+    <div class="stat-lbl">BSE</div>
   </div>
-  <div class="stat-item" style="--c:var(--green)">
-    <div class="n" id="s-high" style="color:var(--green)">–</div>
-    <div class="l">🔥 High Opps</div>
+  <div class="stat-item">
+    <div class="stat-num" id="s-high" style="color:var(--green)">–</div>
+    <div class="stat-lbl">🔥 High Opp</div>
   </div>
-  <div class="stat-item" style="--c:var(--orange)">
-    <div class="n" id="s-mod" style="color:var(--orange)">–</div>
-    <div class="l">✅ Moderate</div>
+  <div class="stat-item">
+    <div class="stat-num" id="s-mod" style="color:var(--orange)">–</div>
+    <div class="stat-lbl">✅ Moderate</div>
   </div>
-  <div class="stat-item" style="--c:var(--purple)">
-    <div class="n" id="s-ins" style="color:var(--purple)">–</div>
-    <div class="l">💡 Insights</div>
+  <div class="stat-item">
+    <div class="stat-num" id="s-ins" style="color:var(--purple)">–</div>
+    <div class="stat-lbl">💡 Insights</div>
   </div>
 </div>
 
-<!-- ═══ MAIN NAV ═════════════════════════════════════════════════════════ -->
-<div class="main-nav">
-  <div class="mnav on" onclick="switchMain('nse')">🟢 NSE <span class="cnt" id="nav-nse">0</span></div>
-  <div class="mnav"    onclick="switchMain('bse')">🟠 BSE <span class="cnt" id="nav-bse">0</span></div>
-  <div class="mnav"    onclick="switchMain('combined')">🔗 Combined <span class="cnt" id="nav-comb">0</span></div>
-  <div class="mnav"    onclick="switchMain('important')">⭐ Important <span class="cnt" id="nav-imp">0</span></div>
-  <div class="mnav"    onclick="switchMain('opportunities')">🎯 Opportunities <span class="cnt" id="nav-opp">0</span></div>
-  <div class="mnav"    onclick="switchMain('insights')">💡 Insights <span class="cnt" id="nav-ins">0</span></div>
-  <div class="mnav"    onclick="switchMain('about')">ℹ️ About</div>
-</div>
+<!-- ══ MAIN NAV ════════════════════════════════════════════════ -->
+<nav class="main-nav">
+  <div class="nav-tab on" onclick="setMain('nse')">
+    NSE <span class="nav-count" id="nc-nse">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('bse')">
+    BSE <span class="nav-count" id="nc-bse">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('combined')">
+    Combined <span class="nav-count" id="nc-comb">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('important')">
+    ⭐ Important <span class="nav-count" id="nc-imp">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('opportunities')">
+    🎯 Opportunities <span class="nav-count" id="nc-opp">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('insights')">
+    💡 Insights <span class="nav-count" id="nc-ins">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('about')">About</div>
+</nav>
 
-<!-- ═══ BODY ════════════════════════════════════════════════════════════ -->
+<!-- ══ BODY ════════════════════════════════════════════════════ -->
 <div class="body-wrap">
 
   <!-- SIDEBAR -->
-  <div class="sidebar" id="sidebar">
-    <div class="seg-row">
-      <button class="seg-btn eq on" id="seg-eq" onclick="setSeg('equity')">EQUITY</button>
-      <button class="seg-btn sme" id="seg-sme" onclick="setSeg('sme')">SME</button>
+  <aside class="sidebar" id="sidebar">
+    <div class="seg-switch">
+      <button class="seg-btn active" id="btn-eq" onclick="setSeg('equity')">EQUITY</button>
+      <button class="seg-btn" id="btn-sme" onclick="setSeg('sme')">SME</button>
     </div>
-    <div id="sb-cats"></div>
-  </div>
+    <div id="sidebar-cats"></div>
+  </aside>
 
   <!-- CONTENT -->
-  <div class="content">
+  <div class="main-content">
 
-    <!-- ── NSE PANE ── -->
+    <!-- NSE -->
     <div class="pane on" id="pane-nse">
-      <div class="sec-hdr">
+      <div class="sec-header">
         <div>
-          <div class="sec-title" id="nse-sec-title">📢 Corporate Announcements</div>
-          <div class="sec-sub">NSE filings · XBRL parsed · PDF attachment links</div>
+          <div class="sec-title" id="nse-cat-title">📢 Corporate Announcements</div>
+          <div class="sec-sub">NSE filings · XBRL parsed · PDF links</div>
         </div>
-        <div class="filters">
-          <input class="search" id="nse-search" placeholder="Symbol / company…" oninput="renderNSE()"/>
+        <div class="sec-filters">
+          <input class="search-box" id="nse-q" placeholder="Symbol / company…" oninput="renderNSE()"/>
+          <select class="filter-sel" id="nse-seg-f" onchange="renderNSE()">
+            <option value="">All segments</option>
+            <option value="EQUITY">Equity</option>
+            <option value="SME">SME</option>
+          </select>
         </div>
       </div>
-      <div class="tbl-wrap" id="nse-table"><div class="loader"><div class="spin"></div> Loading…</div></div>
+      <div class="tbl-wrap" id="nse-tbl"></div>
     </div>
 
-    <!-- ── BSE PANE ── -->
+    <!-- BSE -->
     <div class="pane" id="pane-bse">
-      <div class="sec-hdr">
+      <div class="sec-header">
         <div>
-          <div class="sec-title" id="bse-sec-title">📋 All Announcements</div>
-          <div class="sec-sub">BSE filings · All 9 BSE categories</div>
+          <div class="sec-title" id="bse-cat-title">📋 All Announcements</div>
+          <div class="sec-sub">BSE filings · All 9 categories</div>
         </div>
-        <div class="filters">
-          <input class="search" id="bse-search" placeholder="Symbol / company…" oninput="renderBSE()"/>
+        <div class="sec-filters">
+          <input class="search-box" id="bse-q" placeholder="Symbol / company…" oninput="renderBSE()"/>
+          <select class="filter-sel" id="bse-seg-f" onchange="renderBSE()">
+            <option value="">All segments</option>
+            <option value="EQUITY">Equity</option>
+            <option value="SME">SME</option>
+          </select>
         </div>
       </div>
-      <div class="tbl-wrap" id="bse-table"><div class="loader"><div class="spin"></div> Loading…</div></div>
+      <div class="tbl-wrap" id="bse-tbl"></div>
     </div>
 
-    <!-- ── COMBINED PANE ── -->
+    <!-- COMBINED -->
     <div class="pane" id="pane-combined">
-      <div class="sec-hdr">
+      <div class="sec-header">
         <div>
-          <div class="sec-title" id="comb-sec-title">🔗 Combined — NSE + BSE</div>
+          <div class="sec-title">🔗 NSE + BSE Combined</div>
           <div class="sec-sub">All filings from both exchanges</div>
         </div>
-        <div class="filters">
-          <input class="search" id="comb-search" placeholder="Symbol / company…" oninput="renderCombined()"/>
-          <select class="flt" id="comb-exc" onchange="renderCombined()">
-            <option value="">All Exchanges</option>
+        <div class="sec-filters">
+          <input class="search-box" id="comb-q" placeholder="Symbol / company…" oninput="renderCombined()"/>
+          <select class="filter-sel" id="comb-exc" onchange="renderCombined()">
+            <option value="">NSE + BSE</option>
             <option value="NSE">NSE only</option>
             <option value="BSE">BSE only</option>
           </select>
         </div>
       </div>
-      <div class="tbl-wrap" id="comb-table"><div class="loader"><div class="spin"></div> Loading…</div></div>
+      <div class="tbl-wrap" id="comb-tbl"></div>
     </div>
 
-    <!-- ── IMPORTANT PANE ── -->
+    <!-- IMPORTANT -->
     <div class="pane" id="pane-important">
-      <div class="sec-hdr">
+      <div class="sec-header">
         <div>
           <div class="sec-title">⭐ Important Filings</div>
-          <div class="sec-sub">Board Meetings · Results · Corporate Actions · Insider Trading</div>
+          <div class="sec-sub">Board Meetings · Results · Actions · Insider Trading</div>
         </div>
-        <input class="search" id="imp-search" placeholder="Search…" oninput="renderImportant()"/>
+        <input class="search-box" id="imp-q" placeholder="Search…" oninput="renderImportant()"/>
       </div>
-      <div class="sub-tabs">
-        <div class="stab on"  onclick="setImpCat('all')">All</div>
-        <div class="stab"     onclick="setImpCat('Board Meeting')">🏛️ Board Meetings</div>
-        <div class="stab"     onclick="setImpCat('Financial Result')">📈 Results</div>
-        <div class="stab"     onclick="setImpCat('Corporate Action')">⚡ Actions</div>
-        <div class="stab"     onclick="setImpCat('Insider Trading / SAST')">🔍 Insider/SAST</div>
+      <div class="sub-tabs" id="imp-sub">
+        <div class="sub-tab on" onclick="setImpCat('all')">All</div>
+        <div class="sub-tab" onclick="setImpCat('Board Meeting')">🏛 Board Meetings</div>
+        <div class="sub-tab" onclick="setImpCat('Financial Result')">📈 Results</div>
+        <div class="sub-tab" onclick="setImpCat('Corporate Action')">⚡ Actions</div>
+        <div class="sub-tab" onclick="setImpCat('Insider Trading / SAST')">🔍 Insider</div>
       </div>
-      <div id="imp-list"></div>
+      <div class="imp-list" id="imp-list"></div>
     </div>
 
-    <!-- ── OPPORTUNITIES PANE ── -->
+    <!-- OPPORTUNITIES -->
     <div class="pane" id="pane-opportunities">
-      <div class="sec-hdr">
+      <div class="sec-header">
         <div>
-          <div class="sec-title">🎯 Multibagger Radar</div>
-          <div class="sec-sub">Scored signals · Find stocks before institutional discovery</div>
+          <div class="sec-title">🎯 Opportunity Radar</div>
+          <div class="sec-sub">Scored signals — pre-discovery alerts</div>
         </div>
-        <input class="search" id="opp-search" placeholder="Search…" oninput="renderOpps()"/>
+        <input class="search-box" id="opp-q" placeholder="Search…" oninput="renderOpps()"/>
       </div>
       <div class="opp-hero" id="opp-hero"></div>
       <div class="sub-tabs">
-        <div class="stab on"  onclick="setOppF('all')">All Signals</div>
-        <div class="stab"     onclick="setOppF('high')">🔥 High ≥8</div>
-        <div class="stab"     onclick="setOppF('moderate')">✅ Moderate 5–7</div>
-        <div class="stab"     onclick="setOppF('watch')">👀 Watch 3–4</div>
-        <div class="stab"     onclick="setOppF('caution')">⚠️ Red Flags</div>
+        <div class="sub-tab on" onclick="setOppFilter('all')">All</div>
+        <div class="sub-tab" onclick="setOppFilter('high')">🔥 High ≥8</div>
+        <div class="sub-tab" onclick="setOppFilter('moderate')">✅ Moderate 5–7</div>
+        <div class="sub-tab" onclick="setOppFilter('watch')">👀 Watch 3–4</div>
+        <div class="sub-tab" onclick="setOppFilter('caution')">⚠️ Caution</div>
       </div>
       <div class="opp-grid" id="opp-grid"></div>
     </div>
 
-    <!-- ── INSIGHTS PANE ── -->
+    <!-- INSIGHTS -->
     <div class="pane" id="pane-insights">
-      <div class="sec-hdr">
+      <div class="sec-header">
         <div>
           <div class="sec-title">💡 AI Investment Insights</div>
-          <div class="sec-sub">LLM-powered analysis · 24 categories · Buffett / Lynch / Bogle</div>
+          <div class="sec-sub">LLM analysis · 24 categories · Buffett / Lynch / Bogle</div>
         </div>
       </div>
-      <div class="sub-tabs">
-        <div class="stab on"  onclick="setInsV('all')">All</div>
-        <div class="stab"     onclick="setInsV('results')">📈 Results</div>
-        <div class="stab"     onclick="setInsV('growth')">🚀 Growth</div>
-        <div class="stab"     onclick="setInsV('corporate')">🏢 Corporate</div>
-        <div class="stab"     onclick="setInsV('risk')">⚠️ Risk</div>
-        <div class="stab"     onclick="setInsV('philosophy')">🧠 Philosophy</div>
+      <div class="sub-tabs" id="ins-sub">
+        <div class="sub-tab on" onclick="setInsView('all')">All</div>
+        <div class="sub-tab" onclick="setInsView('results')">📈 Results</div>
+        <div class="sub-tab" onclick="setInsView('growth')">🚀 Growth</div>
+        <div class="sub-tab" onclick="setInsView('corporate')">🏢 Corporate</div>
+        <div class="sub-tab" onclick="setInsView('risk')">⚠️ Risk</div>
+        <div class="sub-tab" onclick="setInsView('philosophy')">🧠 Philosophy</div>
       </div>
-      <div id="ins-content"></div>
+      <div id="ins-content" style="overflow-y:auto;flex:1"></div>
     </div>
 
-    <!-- ── ABOUT PANE ── -->
+    <!-- ABOUT -->
     <div class="pane" id="pane-about">
-      <div class="sec-hdr"><div class="sec-title">ℹ️ About This Dashboard</div></div>
+      <div class="sec-header">
+        <div class="sec-title">About This Project</div>
+      </div>
       <div class="about-wrap">
         <div class="info-box">
-          <strong>100% Free. No subscription. No API keys needed.</strong>
-          Open-source dashboard scraping NSE + BSE every <strong>5 minutes</strong> via GitHub Actions.
-          Data stored as JSON/CSV in the repo. Served via GitHub Pages. Cost: ₹0.
+          <strong>100% Free. No subscription. No login required.</strong><br/>
+          This open-source dashboard uses a <strong>real headless browser (Playwright)</strong> to physically visit NSE and BSE websites every 5 minutes — just like a human user — extracting every filing as it appears. Data is stored as JSON and served via GitHub Pages at zero cost.
         </div>
-        <div class="card-grid">
+        <div class="about-grid">
           <div class="about-card">
             <div class="about-num" style="color:var(--accent)">01</div>
-            <div class="about-title">5-Min Live Scraping</div>
-            <div class="about-desc">GitHub Actions runs every 5 minutes during market hours. Only new filings (deduped by ID) are processed each run — no duplicates.</div>
+            <div class="about-title">Real Browser Scraping</div>
+            <div class="about-desc">Uses Playwright Chromium to open NSE and BSE website pages. JavaScript runs, cookies are set, exactly like a human. Data is extracted from what the browser receives.</div>
           </div>
           <div class="about-card">
             <div class="about-num" style="color:var(--nse)">02</div>
-            <div class="about-title">XBRL Parsing for NSE</div>
-            <div class="about-desc">Each NSE announcement comes with an XBRL/XML file. We parse it to extract the real PDF URL, full description, and submission timestamp.</div>
+            <div class="about-title">XBRL File Parsing</div>
+            <div class="about-desc">NSE attaches XBRL/XML files to each announcement. We fetch and parse them to extract the real PDF attachment URL, full description, and filing metadata.</div>
           </div>
           <div class="about-card">
             <div class="about-num" style="color:var(--bse)">03</div>
-            <div class="about-title">All 9 BSE Categories</div>
-            <div class="about-desc">AGM/EGM, Board Meetings, Company Updates, Corporate Actions, Insider Trading/SAST, New Listings, Results, Integrated Filings, Others.</div>
+            <div class="about-title">All BSE Categories</div>
+            <div class="about-desc">AGM/EGM, Board Meetings, Company Updates, Corporate Actions, Insider/SAST, New Listings, Results, Integrated Filings, Others — all 9 BSE categories covered.</div>
           </div>
           <div class="about-card">
             <div class="about-num" style="color:var(--purple)">04</div>
             <div class="about-title">AI Insight Engine</div>
-            <div class="about-desc">Set ANTHROPIC_API_KEY in GitHub Secrets to enable Claude AI analysis across 24 investment categories with Buffett, Lynch & Bogle frameworks.</div>
+            <div class="about-desc">When ANTHROPIC_API_KEY is set in GitHub Secrets, Claude analyses all filings across 24 investment categories with Buffett, Lynch and Bogle frameworks.</div>
           </div>
           <div class="about-card">
             <div class="about-num" style="color:var(--green)">05</div>
-            <div class="about-title">Multibagger Philosophy</div>
-            <div class="about-desc">Promoter buying, SME strong results, expansion board agendas, FII entry — these signals appear in filings before price moves.</div>
+            <div class="about-title">5-Minute Live Updates</div>
+            <div class="about-desc">GitHub Actions runs every 5 minutes during market hours (9 AM–6 PM IST, Mon–Fri). Deduplication ensures only NEW filings are processed each run.</div>
           </div>
           <div class="about-card">
             <div class="about-num" style="color:var(--orange)">06</div>
-            <div class="about-title">3-Step Setup</div>
-            <div class="about-desc">1. Fork this repo. 2. Enable GitHub Pages (gh-pages branch). 3. Enable Actions. Your live dashboard is up instantly for free.</div>
+            <div class="about-title">Setup: 3 Steps</div>
+            <div class="about-desc">1. Fork on GitHub. 2. Enable Pages (gh-pages branch). 3. Enable Actions. Live at <code style="color:var(--accent2)">username.github.io/exchange_filings_dashboard</code></div>
           </div>
         </div>
-        <div class="info-box" style="color:var(--text3)">
-          <strong style="color:var(--orange)">⚠️ Disclaimer:</strong>
-          For informational and research purposes only. Not financial advice.
-          Opportunity scores are algorithmic and do not guarantee returns.
-          Always do your own due diligence.
+        <div class="info-box" style="margin-top:16px">
+          <strong>⚠️ Disclaimer:</strong> For informational purposes only. Not financial advice. Always do your own due diligence.
         </div>
       </div>
     </div>
 
-  </div><!-- /content -->
+  </div><!-- /main-content -->
 </div><!-- /body-wrap -->
 
 <script>
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 //  STATE
-// ══════════════════════════════════════════════════════════════════════
-const S = {
+// ════════════════════════════════════════════════════════
+const G = {
   data: null,
-  mainTab: 'nse',
-  segment: 'equity',
-  nse_cat:  'corporate_announcements',
-  bse_cat:  'corporate_announcements',
-  comb_cat: 'corporate_announcements',
-  imp_cat:  'all',
-  opp_filter: 'all',
-  ins_view: 'all',
+  main: 'nse',
+  seg: 'equity',
+  nseCat: 'corporate_announcements',
+  bseCat: 'corporate_announcements',
+  combCat: 'corporate_announcements',
+  impCat: 'all',
+  oppFilter: 'all',
+  insView: 'all',
 };
 
 const NSE_CATS = [
-  { key:'corporate_announcements', label:'📢 Announcements' },
-  { key:'board_meetings',          label:'🏛️ Board Meetings' },
-  { key:'financial_results',       label:'📈 Financial Results' },
-  { key:'corporate_actions',       label:'⚡ Corporate Actions' },
-  { key:'shareholding_patterns',   label:'🏦 Shareholding' },
-];
-const BSE_CATS = [
-  { key:'corporate_announcements', label:'📢 All Announcements' },
-  { key:'agm_egm',                 label:'🏢 AGM / EGM' },
-  { key:'board_meetings',          label:'🏛️ Board Meetings' },
-  { key:'results',                 label:'📈 Results' },
-  { key:'corporate_actions',       label:'⚡ Corporate Actions' },
-  { key:'insider_trading',         label:'🔍 Insider / SAST' },
-  { key:'company_updates',         label:'📰 Company Updates' },
-  { key:'new_listings',            label:'🆕 New Listings' },
-  { key:'integrated_filings',      label:'📋 Integrated' },
-  { key:'shareholding_patterns',   label:'🏦 Shareholding' },
-  { key:'others',                  label:'📁 Others' },
+  { key: 'corporate_announcements', label: '📢 Announcements' },
+  { key: 'board_meetings',          label: '🏛 Board Meetings' },
+  { key: 'financial_results',       label: '📈 Results' },
+  { key: 'corporate_actions',       label: '⚡ Actions' },
+  { key: 'shareholding_patterns',   label: '🏦 Shareholding' },
 ];
 
-const INS_VIEW_KEYS = {
-  results:   ['great_results_latest','great_results_prev','great_results_prev2'],
-  growth:    ['growth_triggers','revenue_guidance','order_book','large_orders','capacity_expansions','new_products'],
+const BSE_CATS = [
+  { key: 'corporate_announcements', label: '📢 All Announcements' },
+  { key: 'board_meetings',          label: '🏛 Board Meetings' },
+  { key: 'agm_egm',                 label: '🏢 AGM / EGM' },
+  { key: 'results',                 label: '📈 Results' },
+  { key: 'corporate_actions',       label: '⚡ Actions' },
+  { key: 'insider_trading',         label: '🔍 Insider / SAST' },
+  { key: 'company_updates',         label: '📰 Company Updates' },
+  { key: 'new_listings',            label: '🆕 New Listings' },
+  { key: 'integrated_filings',      label: '📋 Integrated' },
+  { key: 'shareholding_patterns',   label: '🏦 Shareholding' },
+  { key: 'others',                  label: '📁 Others' },
+];
+
+const INS_CATS = {
+  results:   ['great_results_latest','great_results_prev','great_results_prev2','revenue_guidance'],
+  growth:    ['growth_triggers','order_book','large_orders','capacity_expansions','new_products','employee_hiring','patient_registrations'],
   corporate: ['preferential_issues','jv_partnerships','promoter_buying','bulk_deals','analyst_meets','asset_expansion','open_offers'],
-  risk:      ['red_flags','cyclical','credit_ratings','stocks_correction','fii_dii','star_investors'],
+  risk:      ['red_flags','cyclical','credit_ratings','stocks_correction','fii_dii'],
   philosophy:['buffett_picks','lynch_picks','bogle_picks'],
 };
-const INS_ALL_KEYS = Object.values(INS_VIEW_KEYS).flat();
 
 const INS_META = {
-  great_results_latest:  {icon:'🏆',label:'Great Results — Latest Q',   c:'var(--green)'},
-  great_results_prev:    {icon:'📊',label:'Great Results — Prev Q',      c:'var(--teal)'},
-  great_results_prev2:   {icon:'📉',label:'Great Results — Q Before',    c:'var(--accent)'},
-  growth_triggers:       {icon:'🚀',label:'Growth Triggers',             c:'var(--accent)'},
-  revenue_guidance:      {icon:'🎯',label:'Revenue Guidance vs Actual',  c:'var(--accent)'},
-  order_book:            {icon:'📦',label:'Order Book',                  c:'var(--accent)'},
-  preferential_issues:   {icon:'💰',label:'Preferential Issues / QIP',   c:'var(--orange)'},
-  large_orders:          {icon:'📋',label:'Large Order Receipts',        c:'var(--green)'},
-  capacity_expansions:   {icon:'🏗️',label:'Capacity Expansions',        c:'var(--teal)'},
-  new_products:          {icon:'🔬',label:'New Product Launches',        c:'var(--teal)'},
-  jv_partnerships:       {icon:'🤝',label:'JV / Partnerships / M&A',    c:'var(--purple)'},
-  promoter_buying:       {icon:'👔',label:'Promoter Buying',             c:'var(--green)'},
-  bulk_deals:            {icon:'📈',label:'Bulk / Block Deals',          c:'var(--orange)'},
-  analyst_meets:         {icon:'🎙️',label:'Analyst Meets',             c:'var(--accent)'},
-  asset_expansion:       {icon:'🏢',label:'Asset Base Expansion',       c:'var(--accent)'},
-  red_flags:             {icon:'🚨',label:'Red Flags',                   c:'var(--red)'},
-  cyclical:              {icon:'🔄',label:'Cyclical Companies',          c:'var(--orange)'},
-  credit_ratings:        {icon:'⭐',label:'Credit Rating Updates',      c:'var(--yellow)'},
-  stocks_correction:     {icon:'📉',label:'Stocks >10% Correction',     c:'var(--red)'},
-  open_offers:           {icon:'📣',label:'Open Offers',                 c:'var(--orange)'},
-  star_investors:        {icon:'🌟',label:'Star Investors',              c:'var(--yellow)'},
-  fii_dii:               {icon:'🏦',label:'FII / DII Activity',         c:'var(--purple)'},
-  buffett_picks:         {icon:'🧠',label:'Warren Buffett Framework',   c:'#cd853f'},
-  lynch_picks:           {icon:'📚',label:'Peter Lynch Framework',      c:'var(--green)'},
-  bogle_picks:           {icon:'📊',label:'John Bogle Framework',       c:'var(--accent)'},
-};
-const PHI_DETAILS = {
-  buffett_picks: {
-    desc:'Value Investing — buy wonderful companies at fair prices',
-    bg:'linear-gradient(135deg,#3b2a1a,#5c3d20)',
-    criteria:['Wide economic moat','Consistent earnings history','Low/manageable debt','Strong ROE (>15%)','Management integrity','Trading below intrinsic value'],
-  },
-  lynch_picks: {
-    desc:'Growth at Reasonable Price (GARP)',
-    bg:'linear-gradient(135deg,#1a3b2a,#205c3d)',
-    criteria:['PEG ratio < 1 (growth at fair price)','Under-followed by institutions','Strong earnings momentum','Simple understandable business','Insider buying signals','Growth rate > P/E'],
-  },
-  bogle_picks: {
-    desc:'Index Investing — low cost, broad diversification',
-    bg:'linear-gradient(135deg,#1a2040,#2a3060)',
-    criteria:['Sector leaders / index heavyweights','Low cost, scalable operations','Consistent dividend history','Broad market exposure','Long-term holding candidates','Low volatility, steady returns'],
-  },
+  great_results_latest: { icon:'🏆', label:'Great Results — Latest Q',   color:'var(--green)' },
+  great_results_prev:   { icon:'📊', label:'Great Results — Prev Q',     color:'var(--teal)' },
+  great_results_prev2:  { icon:'📉', label:'Great Results — Q-2',        color:'var(--blue)' },
+  revenue_guidance:     { icon:'🎯', label:'Revenue Guidance vs Actual', color:'var(--blue)' },
+  growth_triggers:      { icon:'🚀', label:'Growth Triggers',            color:'var(--accent2)' },
+  order_book:           { icon:'📦', label:'Order Book',                 color:'var(--accent2)' },
+  large_orders:         { icon:'📋', label:'Large Order Receipts',       color:'var(--green)' },
+  capacity_expansions:  { icon:'🏗', label:'Capacity Expansions',        color:'var(--accent2)' },
+  new_products:         { icon:'🔬', label:'New Product Launches',       color:'var(--teal)' },
+  employee_hiring:      { icon:'👥', label:'Employee Hiring',            color:'var(--blue)' },
+  patient_registrations:{ icon:'🏥', label:'Patient Registrations',      color:'var(--teal)' },
+  preferential_issues:  { icon:'💰', label:'Preferential Issues / QIP',  color:'var(--orange)' },
+  jv_partnerships:      { icon:'🤝', label:'JV / Partnerships / M&A',   color:'var(--purple)' },
+  promoter_buying:      { icon:'👔', label:'Promoter Buying',            color:'var(--green)' },
+  bulk_deals:           { icon:'📈', label:'Bulk / Block Deals',         color:'var(--orange)' },
+  analyst_meets:        { icon:'🎙', label:'Analyst Meets',              color:'var(--accent2)' },
+  asset_expansion:      { icon:'🏢', label:'Asset Base Expansion',       color:'var(--accent2)' },
+  open_offers:          { icon:'📣', label:'Open Offers',                color:'var(--orange)' },
+  red_flags:            { icon:'🚨', label:'Red Flags',                  color:'var(--red)' },
+  cyclical:             { icon:'🔄', label:'Cyclical Companies',         color:'var(--orange)' },
+  credit_ratings:       { icon:'⭐', label:'Credit Rating Updates',      color:'var(--orange)' },
+  stocks_correction:    { icon:'📉', label:'Stocks >10% Correction',     color:'var(--red)' },
+  fii_dii:              { icon:'🏦', label:'FII / DII Activity',        color:'var(--purple)' },
+  buffett_picks:        { icon:'🧠', label:'Warren Buffett Picks',       color:'#d4a054' },
+  lynch_picks:          { icon:'📚', label:'Peter Lynch Picks',          color:'var(--green)' },
+  bogle_picks:          { icon:'📊', label:'John Bogle Picks',           color:'var(--blue)' },
 };
 
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 //  DATA LOADING
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 async function loadData() {
-  $('last-updated').textContent = 'Fetching…';
+  $('update-time').textContent = 'Refreshing…';
   try {
-    const r = await fetch('./data.json?t=' + Date.now());
-    if (!r.ok) throw new Error('No data');
-    S.data = await r.json();
+    const r = await fetch('./data.json?_=' + Date.now());
+    if (!r.ok) throw new Error('no data');
+    G.data = await r.json();
   } catch(e) {
-    S.data = _emptyData();
-    $('last-updated').textContent = '⚠️ Waiting for scraper — run GitHub Action to populate';
+    G.data = emptyData();
+    $('update-time').textContent = '⚠️ No data — run GitHub Actions first';
   }
-  renderAll();
+  render();
 }
 
-function _emptyData() {
+function emptyData() {
   const seg = () => ({
-    corporate_announcements:[],board_meetings:[],financial_results:[],
-    corporate_actions:[],shareholding_patterns:[],agm_egm:[],results:[],
-    insider_trading:[],company_updates:[],new_listings:[],
-    integrated_filings:[],others:[]
+    corporate_announcements:[], board_meetings:[], financial_results:[],
+    corporate_actions:[], shareholding_patterns:[], agm_egm:[], results:[],
+    insider_trading:[], company_updates:[], new_listings:[],
+    integrated_filings:[], others:[]
   });
   return {
-    last_updated:new Date().toISOString(),date:new Date().toISOString().split('T')[0],
-    nse:{equity:seg(),sme:seg()},bse:{equity:seg(),sme:seg()},
-    combined:{equity:seg(),sme:seg()},
+    last_updated: new Date().toISOString(),
+    nse:{ equity:seg(), sme:seg() },
+    bse:{ equity:seg(), sme:seg() },
+    combined:{ equity:seg(), sme:seg() },
     important_filings:[],
-    opportunities:{total_opportunities:0,high_opportunity:[],moderate_opportunity:[],watch_list:[],red_flags:[],top_10:[]},
+    opportunities:{ total_opportunities:0, high_opportunity:[], moderate_opportunity:[], watch_list:[], caution_list:[], top_10:[] },
     insights:{},
-    stats:{total_filings:0,nse_filings:0,bse_filings:0,opportunities_found:0,high_opportunity_count:0,insights_generated:0}
+    stats:{ total_filings:0, nse_filings:0, bse_filings:0, opportunities_found:0, high_opportunity_count:0, insights_generated:0 }
   };
 }
 
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 //  RENDER ALL
-// ══════════════════════════════════════════════════════════════════════
-function renderAll() {
-  const d = S.data; if (!d) return;
+// ════════════════════════════════════════════════════════
+function render() {
+  const d = G.data; if (!d) return;
   const st = d.stats || {};
 
+  // Stats
   $('s-total').textContent = st.total_filings || 0;
   $('s-nse').textContent   = st.nse_filings   || 0;
   $('s-bse').textContent   = st.bse_filings   || 0;
   $('s-high').textContent  = st.high_opportunity_count || 0;
-  $('s-mod').textContent   = (d.opportunities?.moderate_opportunity || []).length;
+  $('s-mod').textContent   = (d.opportunities?.moderate_opportunity||[]).length;
   $('s-ins').textContent   = st.insights_generated || 0;
-  $('h-nse').textContent   = st.nse_filings   || 0;
-  $('h-bse').textContent   = st.bse_filings   || 0;
-  $('h-opp').textContent   = st.opportunities_found || 0;
 
-  const dt = d.last_updated
-    ? new Date(d.last_updated).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true})
-    : '–';
-  $('last-updated').textContent = `Updated ${dt} IST`;
+  // Time
+  if (d.last_updated) {
+    try {
+      const dt = new Date(d.last_updated).toLocaleString('en-IN',{
+        timeZone:'Asia/Kolkata', day:'2-digit', month:'short',
+        hour:'2-digit', minute:'2-digit', hour12:true
+      });
+      $('update-time').textContent = `${dt} IST`;
+    } catch { $('update-time').textContent = d.last_updated.slice(0,16) }
+  }
 
-  $('nav-nse').textContent  = st.nse_filings || 0;
-  $('nav-bse').textContent  = st.bse_filings || 0;
-  $('nav-comb').textContent = cntAll(d.combined);
-  $('nav-imp').textContent  = (d.important_filings||[]).length;
-  $('nav-opp').textContent  = st.opportunities_found || 0;
-  $('nav-ins').textContent  = st.insights_generated || 0;
+  // Nav counts
+  $('nc-nse').textContent  = st.nse_filings  || 0;
+  $('nc-bse').textContent  = st.bse_filings  || 0;
+  const combN = cntSrc(d.combined);
+  $('nc-comb').textContent = combN;
+  $('nc-imp').textContent  = (d.important_filings||[]).length;
+  $('nc-opp').textContent  = st.opportunities_found || 0;
+  $('nc-ins').textContent  = st.insights_generated  || 0;
 
   buildSidebar();
-  if (S.mainTab === 'nse')          renderNSE();
-  else if (S.mainTab === 'bse')     renderBSE();
-  else if (S.mainTab === 'combined') renderCombined();
-  else if (S.mainTab === 'important') renderImportant();
-  else if (S.mainTab === 'opportunities') renderOpps();
-  else if (S.mainTab === 'insights') renderInsights();
+  renderNSE();
+  renderBSE();
+  renderCombined();
+  renderImportant();
+  renderOpps();
+  renderInsights();
 }
 
-function cntAll(obj) {
-  if (!obj) return 0;
-  let t = 0;
-  for (const s of Object.values(obj)) {
-    if (typeof s === 'object' && s !== null) {
-      for (const v of Object.values(s)) {
-        if (Array.isArray(v)) t += v.length;
-      }
-    }
-  }
-  return t;
+function cntSrc(src) {
+  let n = 0;
+  for (const seg of ['equity','sme'])
+    for (const v of Object.values(src?.[seg]||{}))
+      if (Array.isArray(v)) n += v.length;
+  return n;
 }
 
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 //  SIDEBAR
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 function buildSidebar() {
-  const d = S.data; if (!d) return;
-  const cats = S.mainTab === 'bse' ? BSE_CATS : NSE_CATS;
-  const activeCat = S.mainTab === 'bse' ? S.bse_cat : S.mainTab === 'combined' ? S.comb_cat : S.nse_cat;
-  const srcKey = S.mainTab === 'bse' ? 'bse' : S.mainTab === 'combined' ? 'combined' : 'nse';
-  const seg = d[srcKey]?.[S.segment] || {};
+  const d = G.data; if (!d) return;
+  const isBSE  = G.main === 'bse';
+  const isComb = G.main === 'combined';
+  const cats   = isBSE ? BSE_CATS : NSE_CATS;
+  const activeCat = isBSE ? G.bseCat : isComb ? G.combCat : G.nseCat;
+  const src = isBSE ? d.bse : isComb ? d.combined : d.nse;
 
   let html = '<div class="sb-section"><div class="sb-label">Categories</div>';
   cats.forEach(c => {
-    const cnt = (seg[c.key]||[]).length;
-    html += `<div class="sb-item${activeCat===c.key?' on':''}" onclick="setCat('${c.key}')">${c.label}<span class="sb-cnt">${cnt}</span></div>`;
+    const cnt = (src?.[G.seg]?.[c.key]||[]).length;
+    const on  = activeCat === c.key;
+    html += `<div class="sb-item${on?' on':''}" onclick="setCat('${c.key}')">
+      ${c.label}<span class="sb-badge">${cnt}</span>
+    </div>`;
   });
   html += '</div>';
-  $('sb-cats').innerHTML = html;
+  $('sidebar-cats').innerHTML = html;
 }
 
 function setSeg(seg) {
-  S.segment = seg;
-  $('seg-eq').classList.toggle('on', seg==='equity');
-  $('seg-sme').classList.toggle('on', seg==='sme');
+  G.seg = seg;
+  $('btn-eq').classList.toggle('active', seg === 'equity');
+  $('btn-sme').classList.toggle('active', seg === 'sme');
   buildSidebar();
-  if      (S.mainTab==='nse')      renderNSE();
-  else if (S.mainTab==='bse')      renderBSE();
-  else if (S.mainTab==='combined') renderCombined();
+  if (G.main === 'nse')      renderNSE();
+  else if (G.main === 'bse') renderBSE();
+  else if (G.main === 'combined') renderCombined();
 }
 
 function setCat(cat) {
-  if      (S.mainTab==='bse')      S.bse_cat = cat;
-  else if (S.mainTab==='combined') S.comb_cat = cat;
-  else                             S.nse_cat = cat;
+  if (G.main === 'bse')      G.bseCat  = cat;
+  else if (G.main === 'combined') G.combCat = cat;
+  else                       G.nseCat  = cat;
   buildSidebar();
-  if      (S.mainTab==='nse')      renderNSE();
-  else if (S.mainTab==='bse')      renderBSE();
-  else if (S.mainTab==='combined') renderCombined();
+  if (G.main === 'nse')      renderNSE();
+  else if (G.main === 'bse') renderBSE();
+  else                       renderCombined();
 }
 
-// ══════════════════════════════════════════════════════════════════════
-//  TABLE HELPERS
-// ══════════════════════════════════════════════════════════════════════
-function badge(exchange) {
-  return exchange==='NSE'
-    ? '<span class="xbg xbg-nse">NSE</span>'
-    : '<span class="xbg xbg-bse">BSE</span>';
-}
-function segBadge(seg) {
-  return (seg||'').toUpperCase()==='SME'
-    ? '<span class="xbg xbg-sme">SME</span>'
-    : '<span class="xbg xbg-eq">EQ</span>';
-}
-function attCell(url) {
-  if (!url) return '<td class="td-att">–</td>';
-  return `<td class="td-att"><a class="att-btn" href="${esc(url)}" target="_blank" rel="noopener">📄 PDF</a></td>`;
-}
-function fmtDate(s) {
-  if (!s) return '–';
-  try {
-    const d = new Date(s);
-    if (isNaN(d)) return String(s).slice(0,16);
-    return d.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});
-  } catch { return String(s).slice(0,16); }
-}
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function $(id){ return document.getElementById(id); }
-function qsa(s){ return document.querySelectorAll(s); }
-function empty(icon,title,desc) {
-  return `<div class="empty"><div class="ei">${icon}</div><div class="et">${title}</div><div class="ed">${desc}</div></div>`;
-}
-function filter(rows, q) {
-  if (!q) return rows;
-  const qL = q.toLowerCase();
-  return rows.filter(r =>
-    (r.symbol||'').toLowerCase().includes(qL) ||
-    (r.company||'').toLowerCase().includes(qL) ||
-    (r.subject||'').toLowerCase().includes(qL)
-  );
+// ════════════════════════════════════════════════════════
+//  TABLE RENDERING
+// ════════════════════════════════════════════════════════
+function getRows(src, catKey, seg, excFilter) {
+  let rows = [];
+  if (seg) {
+    rows = [...(src?.[seg]?.[catKey]||[])];
+  } else {
+    for (const s of ['equity','sme'])
+      rows.push(...(src?.[s]?.[catKey]||[]));
+  }
+  if (excFilter) rows = rows.filter(r => r.exchange === excFilter);
+  return rows;
 }
 
-// ══════════════════════════════════════════════════════════════════════
-//  NSE RENDER
-// ══════════════════════════════════════════════════════════════════════
-const NSE_HEADERS = {
-  corporate_announcements: ['Exchange','Seg','Symbol','Company','Subject / Description','Date','Attachment'],
-  board_meetings:          ['Exchange','Seg','Symbol','Company','Purpose','Meeting Date','Filing Date','Attachment'],
-  financial_results:       ['Exchange','Seg','Symbol','Company','Period','Type','Filing Date','Attachment'],
-  corporate_actions:       ['Exchange','Seg','Symbol','Company','Action','Ex-Date','Record Date'],
-  shareholding_patterns:   ['Exchange','Seg','Symbol','Company','Period','Promoter %','Public %','FII %','Filing Date','Attachment'],
-};
-const NSE_CAT_LABELS = {
-  corporate_announcements:'📢 Corporate Announcements',
-  board_meetings:'🏛️ Board Meetings',
-  financial_results:'📈 Financial Results',
-  corporate_actions:'⚡ Corporate Actions',
-  shareholding_patterns:'🏦 Shareholding Patterns',
-};
+function filterRows(rows, q, segF) {
+  if (q) {
+    const ql = q.toLowerCase();
+    rows = rows.filter(r =>
+      (r.symbol||'').toLowerCase().includes(ql) ||
+      (r.company||'').toLowerCase().includes(ql) ||
+      (r.subject||'').toLowerCase().includes(ql)
+    );
+  }
+  if (segF) rows = rows.filter(r => r.segment === segF);
+  return rows;
+}
+
+function renderTable(container, rows, catKey) {
+  if (!rows.length) {
+    container.innerHTML = empty('📭', 'No filings', 'No data yet. Run the GitHub Action to scrape NSE & BSE.');
+    return;
+  }
+
+  const isBM = catKey.includes('board');
+  const isFR = catKey.includes('result') || catKey.includes('financial');
+  const isCA = catKey.includes('action');
+  const isSH = catKey.includes('shareholding');
+  const isIT = catKey.includes('insider');
+
+  let thExtra = '', tdFn;
+  if (isBM) {
+    thExtra = '<th>Meeting Date</th><th>Filing Date</th>';
+    tdFn = r => `<td class="t-date">${fmt(r.meeting_date)}</td><td class="t-date">${fmt(r.filing_date)}</td>`;
+  } else if (isFR) {
+    thExtra = '<th>Period</th><th>Type</th><th>Filing Date</th>';
+    tdFn = r => `<td>${esc(r.period||'–')}</td><td>${esc(r.result_type||'Quarterly')}</td><td class="t-date">${fmt(r.filing_date)}</td>`;
+  } else if (isCA) {
+    thExtra = '<th>Action</th><th>Ex-Date</th><th>Rec Date</th>';
+    tdFn = r => `<td class="t-subject">${esc(r.action||r.subject||'–')}</td><td class="t-date">${fmt(r.ex_date)}</td><td class="t-date">${fmt(r.record_date)}</td>`;
+  } else if (isSH) {
+    thExtra = '<th>Period</th><th>Promoter%</th><th>FII%</th><th>Filing Date</th>';
+    tdFn = r => `<td>${esc(r.period||'–')}</td><td>${esc(String(r.promoter_holding||'–'))}</td><td>${esc(String(r.fii_holding||'–'))}</td><td class="t-date">${fmt(r.filing_date)}</td>`;
+  } else if (isIT) {
+    thExtra = '<th>Subcategory</th><th>Filing Date</th>';
+    tdFn = r => `<td><span class="badge b-ins">${esc(r.subcategory||'Insider')}</span></td><td class="t-date">${fmt(r.filing_date)}</td>`;
+  } else {
+    thExtra = '<th>Subject</th><th>Filing Date</th>';
+    tdFn = r => `<td class="t-subject">${esc((r.subject||'–').slice(0,130))}</td><td class="t-date">${fmt(r.filing_date)}</td>`;
+  }
+
+  const tbody = rows.slice(0,500).map(r => {
+    const excBadge = r.exchange === 'NSE'
+      ? `<span class="badge b-nse">NSE</span>`
+      : `<span class="badge b-bse">BSE</span>`;
+    const segBadge = r.segment === 'SME'
+      ? `<span class="badge b-sme">SME</span>`
+      : `<span class="badge b-eq">EQ</span>`;
+    const att = r.attachment_url
+      ? `<a class="att-btn" href="${esc(r.attachment_url)}" target="_blank" rel="noopener">📄 PDF</a>`
+      : `<span style="color:var(--text3);font-size:10px">–</span>`;
+
+    return `<tr>
+      <td>${excBadge} ${segBadge}</td>
+      <td class="t-sym">${esc(r.symbol||'–')}</td>
+      <td class="t-company">${esc((r.company||'–').slice(0,38))}</td>
+      ${tdFn(r)}
+      <td>${att}</td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `<table>
+    <thead><tr>
+      <th>Exch</th><th>Symbol</th><th>Company</th>${thExtra}<th>Attach</th>
+    </tr></thead>
+    <tbody>${tbody}</tbody>
+  </table>`;
+}
 
 function renderNSE() {
-  const d = S.data; if (!d) return;
-  $('nse-sec-title').textContent = NSE_CAT_LABELS[S.nse_cat] || 'NSE Filings';
-  const q = ($('nse-search')?.value || '');
-  let rows = filter(d.nse?.[S.segment]?.[S.nse_cat] || [], q);
-  buildTable($('nse-table'), rows, S.nse_cat, 'nse');
+  const d = G.data; if (!d) return;
+  const meta = NSE_CATS.find(c => c.key === G.nseCat) || NSE_CATS[0];
+  $('nse-cat-title').textContent = meta.label;
+  const rows0 = getRows(d.nse, G.nseCat, G.seg, '');
+  const rows  = filterRows(rows0, $('nse-q').value, $('nse-seg-f').value);
+  renderTable($('nse-tbl'), rows, G.nseCat);
 }
 
 function renderBSE() {
-  const d = S.data; if (!d) return;
-  const bseTitles = {
-    corporate_announcements:'📢 All BSE Announcements',agm_egm:'🏢 AGM / EGM',
-    board_meetings:'🏛️ Board Meetings',results:'📈 Financial Results',
-    corporate_actions:'⚡ Corporate Actions',insider_trading:'🔍 Insider Trading / SAST',
-    company_updates:'📰 Company Updates',new_listings:'🆕 New Listings',
-    integrated_filings:'📋 Integrated Filings',shareholding_patterns:'🏦 Shareholding',others:'📁 Others',
-  };
-  $('bse-sec-title').textContent = bseTitles[S.bse_cat] || 'BSE Filings';
-  const q = ($('bse-search')?.value || '');
-  let rows = filter(d.bse?.[S.segment]?.[S.bse_cat] || [], q);
-  buildTable($('bse-table'), rows, S.bse_cat, 'bse');
+  const d = G.data; if (!d) return;
+  const meta = BSE_CATS.find(c => c.key === G.bseCat) || BSE_CATS[0];
+  $('bse-cat-title').textContent = meta.label;
+  const rows0 = getRows(d.bse, G.bseCat, G.seg, '');
+  const rows  = filterRows(rows0, $('bse-q').value, $('bse-seg-f').value);
+  renderTable($('bse-tbl'), rows, G.bseCat);
 }
 
 function renderCombined() {
-  const d = S.data; if (!d) return;
-  const q = ($('comb-search')?.value || '');
-  const exc = $('comb-exc')?.value || '';
-  let rows = filter(d.combined?.[S.segment]?.[S.comb_cat] || [], q);
-  if (exc) rows = rows.filter(r => (r.exchange||'') === exc);
-  buildTable($('comb-table'), rows, S.comb_cat, 'combined');
+  const d = G.data; if (!d) return;
+  const rows0 = getRows(d.combined, G.combCat, G.seg, $('comb-exc').value);
+  const rows  = filterRows(rows0, $('comb-q').value, '');
+  renderTable($('comb-tbl'), rows, G.combCat);
 }
 
-function buildTable(wrap, rows, cat, source) {
-  if (!rows.length) {
-    wrap.innerHTML = empty('📭','No filings found',
-      source==='bse'
-        ? 'BSE data will appear here once the scraper runs. Trigger GitHub Action manually to get started.'
-        : 'Run the GitHub Action scraper to populate data. Check that NSE session cookies initialise correctly.');
-    return;
-  }
-
-  const isBSE = source === 'bse';
-  const catKey = (cat==='results'||cat==='financial_results') ? 'financial_results'
-               : (cat==='agm_egm'||cat==='company_updates'||cat==='new_listings'||cat==='integrated_results'||cat==='others') ? 'corporate_announcements'
-               : cat;
-  const headers = NSE_HEADERS[catKey] || ['Exchange','Seg','Symbol','Company','Subject','Date','Attachment'];
-
-  let html = `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>`;
-  rows.slice(0,500).forEach(r => {
-    const b = badge(r.exchange);
-    const s = segBadge(r.segment);
-    const base = `<td>${b}&nbsp;${s}</td><td>${badge(r.exchange)===badge('NSE')?'':''}${s.includes('SME')?'<span class="xbg xbg-sme" style="display:none"></span>':''}</td>`;
-
-    // Build row based on category
-    let cells = `<td>${b}</td><td>${s}</td>`;
-    cells += `<td class="td-sym">${esc(r.symbol||'–')}</td>`;
-    cells += `<td class="td-co">${esc(r.company||'–')}</td>`;
-
-    if (catKey === 'board_meetings') {
-      cells += `<td class="td-subj">${esc(r.subject||r.description||'–')}</td>`;
-      cells += `<td class="td-date">${fmtDate(r.meeting_date)}</td>`;
-      cells += `<td class="td-date">${fmtDate(r.filing_date)}</td>`;
-      cells += attCell(r.attachment_url);
-    } else if (catKey === 'financial_results') {
-      cells += `<td class="td-subj">${esc(r.subject||r.period||'–')}</td>`;
-      cells += `<td>${esc(r.period||'–')}</td>`;
-      cells += `<td>${esc(r.result_type||'Quarterly')}</td>`;
-      cells += `<td class="td-date">${fmtDate(r.filing_date)}</td>`;
-      cells += attCell(r.attachment_url);
-    } else if (catKey === 'corporate_actions') {
-      cells += `<td class="td-subj">${esc(r.action||r.subject||'–')}</td>`;
-      cells += `<td class="td-date">${fmtDate(r.ex_date)}</td>`;
-      cells += `<td class="td-date">${fmtDate(r.record_date)}</td>`;
-    } else if (catKey === 'shareholding_patterns') {
-      cells += `<td>${esc(r.period||'–')}</td>`;
-      cells += `<td>${esc(r.promoter_holding||'–')}</td>`;
-      cells += `<td>${esc(r.public_holding||'–')}</td>`;
-      cells += `<td>${esc(r.fii_holding||'–')}</td>`;
-      cells += `<td class="td-date">${fmtDate(r.filing_date)}</td>`;
-      cells += attCell(r.attachment_url);
-    } else {
-      // Announcements + all BSE categories
-      const subj = r.subject || r.description || '';
-      const desc = r.description || '';
-      cells += `<td class="td-subj">
-        <div>${esc(subj.slice(0,100))}</div>
-        ${desc && desc!==subj ? `<div style="color:var(--text3);margin-top:2px;font-size:10px">${esc(desc.slice(0,120))}</div>` : ''}
-      </td>`;
-      cells += `<td class="td-date">${fmtDate(r.filing_date)}</td>`;
-      cells += attCell(r.attachment_url);
-    }
-
-    html += `<tr>${cells}</tr>`;
-  });
-  html += '</tbody></table>';
-  if (rows.length > 500) html += `<div style="text-align:center;padding:8px;color:var(--text3);font-size:10px">Showing 500 of ${rows.length} results</div>`;
-  wrap.innerHTML = html;
-}
-
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 //  IMPORTANT FILINGS
-// ══════════════════════════════════════════════════════════════════════
-function setImpCat(cat) {
-  S.imp_cat = cat;
-  qsa('#pane-important .stab').forEach((el,i) => el.classList.toggle('on', ['all','Board Meeting','Financial Result','Corporate Action','Insider Trading / SAST'][i]===cat));
+// ════════════════════════════════════════════════════════
+function setImpCat(c) {
+  G.impCat = c;
+  $$('#imp-sub .sub-tab').forEach((el,i) =>
+    el.classList.toggle('on', ['all','Board Meeting','Financial Result','Corporate Action','Insider Trading / SAST'][i] === c));
   renderImportant();
 }
-function renderImportant() {
-  const d = S.data; if (!d) return;
-  const q = ($('imp-search')?.value||'').toLowerCase();
-  let rows = (d.important_filings||[]).filter(r => {
-    const cat_ok = S.imp_cat==='all' || r.category===S.imp_cat;
-    const q_ok = !q || (r.symbol||'').toLowerCase().includes(q) || (r.company||'').toLowerCase().includes(q);
-    return cat_ok && q_ok;
-  });
 
-  const list = $('imp-list');
+function renderImportant() {
+  const d = G.data; if (!d) return;
+  let rows = d.important_filings || [];
+  if (G.impCat !== 'all') rows = rows.filter(r => r.category === G.impCat);
+  const q = $('imp-q').value.toLowerCase();
+  if (q) rows = rows.filter(r =>
+    (r.symbol||'').toLowerCase().includes(q) || (r.company||'').toLowerCase().includes(q));
+
+  const el = $('imp-list');
   if (!rows.length) {
-    list.innerHTML = empty('⭐','No important filings','Board meetings, results, corporate actions and insider trading appear here.');
+    el.innerHTML = empty('⭐','No important filings','Board meetings, results and corporate actions appear here.');
     return;
   }
 
-  const catPip = {'Board Meeting':'p-bm','Financial Result':'p-fr','Corporate Action':'p-ca','Insider Trading / SAST':'p-it'};
-  list.innerHTML = rows.slice(0,200).map(r => `
-    <div class="imp-item">
+  const dotColor = { 'Board Meeting':'var(--orange)', 'Financial Result':'var(--green)',
+    'Corporate Action':'var(--purple)', 'Insider Trading / SAST':'var(--red)' };
+
+  el.innerHTML = rows.slice(0,200).map(r => {
+    const exc = r.exchange === 'NSE' ? '<span class="badge b-nse">NSE</span>' : '<span class="badge b-bse">BSE</span>';
+    const seg = r.segment === 'SME' ? '<span class="badge b-sme">SME</span>' : '<span class="badge b-eq">EQ</span>';
+    const dc  = dotColor[r.category] || 'var(--text3)';
+    const att = r.attachment_url
+      ? `<a class="att-btn" href="${esc(r.attachment_url)}" target="_blank">📄 PDF</a>` : '';
+    return `<div class="imp-row">
       <div>
         <div class="imp-sym">${esc(r.symbol||'–')}</div>
-        <div class="imp-badges">
-          ${badge(r.exchange)} ${segBadge(r.segment)}
-        </div>
+        <div class="imp-badges">${exc}${seg}</div>
       </div>
       <div>
         <div class="imp-subj">
-          <span class="cat-pip ${catPip[r.category]||''}"></span>
-          <strong>${esc(r.category||'')}</strong> — ${esc((r.subject||r.action||'').slice(0,120))}
+          <span class="cat-dot" style="background:${dc}"></span>
+          <strong>${esc(r.category||'')}</strong> — ${esc((r.subject||r.action||r.purpose||'').slice(0,120))}
         </div>
         <div class="imp-co">${esc(r.company||'')}</div>
-        ${r.attachment_url ? `<div style="margin-top:4px"><a class="att-link" href="${esc(r.attachment_url)}" target="_blank" rel="noopener">📄 View PDF</a></div>` : ''}
+        ${att ? `<div style="margin-top:4px">${att}</div>` : ''}
       </div>
-      <div class="imp-date">${fmtDate(r.filing_date||r.meeting_date||r.ex_date)}</div>
-    </div>`).join('');
+      <div class="imp-date">${fmt(r.filing_date||r.meeting_date||r.ex_date)}</div>
+    </div>`;
+  }).join('');
 }
 
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 //  OPPORTUNITIES
-// ══════════════════════════════════════════════════════════════════════
-function setOppF(f) {
-  S.opp_filter = f;
-  qsa('#pane-opportunities .stab').forEach((el,i) => el.classList.toggle('on', ['all','high','moderate','watch','caution'][i]===f));
+// ════════════════════════════════════════════════════════
+function setOppFilter(f) {
+  G.oppFilter = f;
+  $$('#pane-opportunities .sub-tab').forEach((el,i) =>
+    el.classList.toggle('on', ['all','high','moderate','watch','caution'][i] === f));
   renderOpps();
 }
+
 function renderOpps() {
-  const d = S.data; if (!d) return;
-  const opps = d.opportunities || {};
+  const d = G.data; if (!d) return;
+  const o = d.opportunities || {};
 
   $('opp-hero').innerHTML = `
-    <div class="oh-item"><div class="n" style="color:var(--green)">${(opps.high_opportunity||[]).length}</div><div class="l">🔥 High</div></div>
-    <div class="oh-item"><div class="n" style="color:var(--orange)">${(opps.moderate_opportunity||[]).length}</div><div class="l">✅ Moderate</div></div>
-    <div class="oh-item"><div class="n" style="color:var(--accent)">${(opps.watch_list||[]).length}</div><div class="l">👀 Watch</div></div>
-    <div class="oh-item"><div class="n" style="color:var(--red)">${(opps.red_flags||[]).length}</div><div class="l">⚠️ Red Flags</div></div>
-    <div class="oh-item"><div class="n" style="color:var(--text)">${opps.total_opportunities||0}</div><div class="l">Total</div></div>`;
+    <div class="opp-stat"><div class="opp-num" style="color:var(--green)">${(o.high_opportunity||[]).length}</div><div class="opp-lbl">🔥 High</div></div>
+    <div class="opp-stat"><div class="opp-num" style="color:var(--orange)">${(o.moderate_opportunity||[]).length}</div><div class="opp-lbl">✅ Moderate</div></div>
+    <div class="opp-stat"><div class="opp-num" style="color:var(--blue)">${(o.watch_list||[]).length}</div><div class="opp-lbl">👀 Watch</div></div>
+    <div class="opp-stat"><div class="opp-num" style="color:var(--red)">${(o.caution_list||[]).length}</div><div class="opp-lbl">⚠️ Caution</div></div>
+    <div class="opp-stat"><div class="opp-num">${o.total_opportunities||0}</div><div class="opp-lbl">Total</div></div>`;
 
-  const map = {all:'top_10',high:'high_opportunity',moderate:'moderate_opportunity',watch:'watch_list',caution:'red_flags'};
-  const q = ($('opp-search')?.value||'').toLowerCase();
-  let rows = (opps[map[S.opp_filter]] || []).filter(r =>
-    !q || (r.symbol||'').toLowerCase().includes(q) || (r.company||'').toLowerCase().includes(q)
-  );
+  let rows = (G.oppFilter === 'all' ? (o.top_10||[])
+    : G.oppFilter === 'high'     ? (o.high_opportunity||[])
+    : G.oppFilter === 'moderate' ? (o.moderate_opportunity||[])
+    : G.oppFilter === 'watch'    ? (o.watch_list||[])
+    : (o.caution_list||[]));
+
+  const q = $('opp-q').value.toLowerCase();
+  if (q) rows = rows.filter(r => (r.symbol||'').toLowerCase().includes(q) || (r.company||'').toLowerCase().includes(q));
 
   const grid = $('opp-grid');
-  if (!rows.length) {
-    grid.innerHTML = empty('🔍','No signals found','Opportunity scoring runs automatically after each scrape. Trigger the GitHub Action to see today\'s signals.');
-    return;
-  }
+  if (!rows.length) { grid.innerHTML = `<div style="grid-column:1/-1">${empty('🔍','No signals found','Opportunities appear once the scraper runs and analyses filings.')}</div>`; return; }
+
   grid.innerHTML = rows.map(r => {
-    const lvl = r.opportunity_score >= 8 ? 'hi' : r.opportunity_score >= 5 ? 'mo' : r.opportunity_score >= 3 ? 'wt' : 'rf';
-    const scCls = lvl==='hi'?'sc-hi':lvl==='mo'?'sc-mo':lvl==='wt'?'sc-wt':'sc-rf';
-    return `<div class="opp-card ${lvl}">
+    const sc  = r.opportunity_score || 0;
+    const cls = sc >= 8 ? 'hi' : sc >= 5 ? 'mo' : sc < 0 ? 'ca' : 'wt';
+    const scCls = sc >= 8 ? 'sc-hi' : sc >= 5 ? 'sc-mo' : sc < 0 ? 'sc-ca' : 'sc-wt';
+    const exc = r.exchange === 'NSE' ? '<span class="badge b-nse">NSE</span>' : '<span class="badge b-bse">BSE</span>';
+    const seg = r.segment === 'SME' ? '<span class="badge b-sme">SME</span>' : '<span class="badge b-eq">EQ</span>';
+    return `<div class="opp-card ${cls}">
       <div class="opp-top">
-        <div><div class="opp-sym">${esc(r.symbol||'–')}</div><div class="opp-co">${esc(r.company||'')}</div></div>
-        <div class="opp-score ${scCls}">${r.opportunity_score||0}</div>
+        <div>
+          <div class="opp-sym">${esc(r.symbol||'–')}</div>
+          <div class="opp-co">${esc((r.company||'').slice(0,30))}</div>
+        </div>
+        <div class="opp-score ${scCls}">${sc}</div>
       </div>
       <div class="opp-level">${esc(r.opportunity_level||'')}</div>
-      <div class="sig-wrap">${(r.opportunity_signals||[]).slice(0,6).map(s=>`<span class="sig-chip">${esc(s)}</span>`).join('')}</div>
+      <div class="sig-list">${(r.opportunity_signals||[]).slice(0,4).map(s=>`<span class="sig-chip">${esc(s)}</span>`).join('')}</div>
       <div class="opp-foot">
-        ${badge(r.exchange)} ${segBadge(r.segment)}
-        <span class="xbg-cat" style="background:var(--surface3);border:1px solid var(--border);border-radius:3px;padding:1px 5px;font-size:8px;color:var(--text3)">${esc(r.category||'')}</span>
-        ${r.attachment_url?`<a class="att-link" href="${esc(r.attachment_url)}" target="_blank" rel="noopener">📄 PDF</a>`:''}
+        ${exc}${seg}
+        ${r.attachment_url ? `<a class="att-btn" href="${esc(r.attachment_url)}" target="_blank">📄</a>` : ''}
       </div>
     </div>`;
   }).join('');
 }
 
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 //  INSIGHTS
-// ══════════════════════════════════════════════════════════════════════
-function setInsV(v) {
-  S.ins_view = v;
-  qsa('#pane-insights .stab').forEach((el,i) => el.classList.toggle('on', ['all','results','growth','corporate','risk','philosophy'][i]===v));
+// ════════════════════════════════════════════════════════
+function setInsView(v) {
+  G.insView = v;
+  $$('#ins-sub .sub-tab').forEach((el,i) =>
+    el.classList.toggle('on', ['all','results','growth','corporate','risk','philosophy'][i] === v));
   renderInsights();
 }
+
 function renderInsights() {
-  const d = S.data; if (!d) return;
+  const d = G.data; if (!d) return;
   const ins = d.insights || {};
   const cont = $('ins-content');
 
-  if (S.ins_view === 'philosophy') {
-    renderPhilosophy(ins, cont);
+  if (G.insView === 'philosophy') {
+    renderPhilosophy(cont, ins);
     return;
   }
 
-  const keys = S.ins_view==='all' ? INS_ALL_KEYS : (INS_VIEW_KEYS[S.ins_view] || INS_ALL_KEYS);
-  if (!ins || Object.keys(ins).filter(k=>k!=='generated_at'&&k!=='model_used'&&k!=='total_insights').length===0) {
-    cont.innerHTML = `<div style="padding:14px"><div class="info-box">
-      <strong>LLM Insights not yet generated.</strong><br>
-      Add <code>ANTHROPIC_API_KEY</code> to your GitHub repository secrets.
-      Go to Settings → Secrets → Actions → New secret. The next scraper run will generate insights automatically.
-    </div></div>`;
-    return;
-  }
+  const catKeys = G.insView === 'all'
+    ? Object.keys(INS_META).filter(k => !['buffett_picks','lynch_picks','bogle_picks'].includes(k))
+    : (INS_CATS[G.insView] || []);
 
   let html = '<div class="ins-grid">';
-  keys.forEach(key => {
-    const meta = INS_META[key] || {icon:'📌',label:key,c:'var(--accent)'};
-    const items = (ins[key] || []);
-    const bodyId = 'ins-' + key;
-    html += `<div class="ins-card">
-      <div class="ins-hdr" onclick="toggleIns('${bodyId}')">
-        <div class="ins-title" style="color:${meta.c}">${meta.icon} ${meta.label}</div>
-        <span class="ins-badge" style="color:${items.length?meta.c:'var(--text3)'}">${items.length}</span>
-      </div>
-      <div class="ins-body" id="${bodyId}">`;
-    if (!items.length) {
-      html += '<div class="ins-empty">No entries for this category today</div>';
-    } else {
-      items.slice(0,10).forEach(it => {
-        const sc = (s => {
-          if (!s) return 'st-neu';
-          const sl=s.toLowerCase();
-          return sl.includes('positive')?'st-pos':sl.includes('negative')?'st-neg':sl.includes('watch')?'st-wt':'st-neu';
-        })(it.signal);
-        html += `<div class="ins-row">
-          <div class="ins-sym-row">
-            <span class="ins-sym">${esc(it.symbol||'–')}</span>
-            ${badge(it.exchange||'')}
-            <span class="sig-tag ${sc}">${esc(it.signal||'')}</span>
-          </div>
-          <div class="ins-headline">${esc(it.headline||'')}</div>
-          <div class="ins-detail">${esc((it.detail||'').slice(0,180))}</div>
-          <div class="ins-foot">
-            ${(it.tags||[]).slice(0,4).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join('')}
-            ${it.attachment_url?`<a class="att-link" href="${esc(it.attachment_url)}" target="_blank" rel="noopener">📄 PDF</a>`:''}
-          </div>
-        </div>`;
-      });
-    }
-    html += '</div></div>';
-  });
-  html += '</div>';
-  cont.innerHTML = html;
-}
-
-function renderPhilosophy(ins, cont) {
-  const keys = ['buffett_picks','lynch_picks','bogle_picks'];
-  let html = '<div class="phi-grid">';
-  keys.forEach(key => {
-    const meta = INS_META[key] || {};
-    const phi = PHI_DETAILS[key] || {};
+  catKeys.forEach(key => {
+    const m     = INS_META[key] || { icon:'💡', label:key, color:'var(--text2)' };
     const items = ins[key] || [];
-    html += `<div class="phi-card">
-      <div class="phi-hdr" style="background:${phi.bg||'var(--surface3)'}">
-        <div class="phi-av" style="background:rgba(0,0,0,.3)">${meta.icon}</div>
-        <div><div class="phi-name">${meta.label}</div><div class="phi-tag">${phi.desc||''}</div></div>
+    html += `<div class="ins-card">
+      <div class="ins-card-hdr" onclick="toggleIns('ib-${key}')">
+        <div class="ins-card-title" style="color:${m.color}">${m.icon} ${m.label}</div>
+        <span class="ins-cnt">${items.length}</span>
       </div>
-      <div class="phi-criteria">
-        <div class="phi-crit-label">Selection Criteria</div>
-        ${(phi.criteria||[]).map(c=>`<div class="phi-crit-item">${esc(c)}</div>`).join('')}
-      </div>
-      <div class="phi-picks">
-        <div class="phi-picks-label">${items.length} Picks Today</div>
+      <div class="ins-body" id="ib-${key}">
         ${!items.length
-          ? '<div class="ins-empty">No picks for this framework today</div>'
-          : items.slice(0,8).map(it=>`
-            <div style="padding:8px 0;border-bottom:1px solid var(--border2)">
-              <div style="display:flex;gap:5px;align-items:center;margin-bottom:3px">
-                <strong style="color:var(--accent);font-size:12px">${esc(it.symbol||'–')}</strong>
-                ${badge(it.exchange||'')}
-                <span class="sig-tag ${(s=>{const sl=(s||'').toLowerCase();return sl.includes('positive')?'st-pos':sl.includes('negative')?'st-neg':'st-neu'})(it.signal)}">${esc(it.signal||'')}</span>
+          ? `<div style="padding:14px;color:var(--text3);font-size:11px;text-align:center">No data today</div>`
+          : items.slice(0,20).map(it => `<div class="ins-item">
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:3px">
+                <strong style="color:var(--accent2);font-size:12px">${esc(it.symbol||'–')}</strong>
+                ${it.exchange==='NSE'?'<span class="badge b-nse">NSE</span>':'<span class="badge b-bse">BSE</span>'}
+                <span class="signal-tag ${sigCls(it.signal)}">${esc(it.signal||'')}</span>
               </div>
-              <div style="font-size:11px;font-weight:500;color:var(--text);margin-bottom:2px">${esc(it.headline||'')}</div>
-              <div style="font-size:10px;color:var(--text3);line-height:1.5">${esc((it.detail||'').slice(0,150))}</div>
-              ${it.attachment_url?`<a class="att-link" style="margin-top:4px;display:inline-flex" href="${esc(it.attachment_url)}" target="_blank">📄 PDF</a>`:''}
-            </div>`).join('')
-        }
+              <div class="ins-headline">${esc(it.headline||'')}</div>
+              <div class="ins-detail">${esc((it.detail||'').slice(0,200))}</div>
+              <div class="ins-foot">
+                ${(it.tags||[]).slice(0,3).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join('')}
+                ${it.attachment_url?`<a class="att-btn" href="${esc(it.attachment_url)}" target="_blank">📄 PDF</a>`:''}
+              </div>
+            </div>`).join('')}
       </div>
     </div>`;
   });
   html += '</div>';
   cont.innerHTML = html;
+
+  // Open first card
+  if (G.insView !== 'all' && catKeys[0]) {
+    const b = document.getElementById(`ib-${catKeys[0]}`);
+    if (b) b.classList.add('open');
+  }
+}
+
+function renderPhilosophy(cont, ins) {
+  const philos = [
+    { key:'buffett_picks', icon:'🧠', color:'#d4a054', name:'Warren Buffett', tag:'Value Investing',
+      criteria:['Strong competitive moat / brand','Consistent earnings >3 years','Low debt-to-equity','ROE >15%','Promoter conviction','Undervalued vs intrinsic value'] },
+    { key:'lynch_picks', icon:'📚', color:'var(--green)', name:'Peter Lynch', tag:'Growth at Reasonable Price',
+      criteria:['Earnings growing faster than P/E','Under-followed by analysts','SME or mid-cap','PEG <1','Relatable business','Hidden gem potential'] },
+    { key:'bogle_picks', icon:'📊', color:'var(--blue)', name:'John Bogle', tag:'Index & Passive Investing',
+      criteria:['Sector leader / index-eligible','Stable dividends','Low operating costs','Long-term fundamentals','No excessive leverage','Broad market exposure'] },
+  ];
+
+  let html = '<div class="phi-wrap"><div class="phi-grid">';
+  philos.forEach(p => {
+    const items = ins[p.key] || [];
+    html += `<div class="phi-card">
+      <div class="phi-hdr">
+        <div class="phi-avatar" style="color:${p.color}">${p.icon}</div>
+        <div>
+          <div class="phi-name" style="color:${p.color}">${p.name}</div>
+          <div class="phi-sub">${p.tag} — ${items.length} picks</div>
+        </div>
+      </div>
+      <div class="phi-criteria">
+        <div class="phi-crit-lbl">Selection Criteria</div>
+        ${p.criteria.map(c=>`<div class="phi-crit-item">✓ ${c}</div>`).join('')}
+      </div>
+      <div class="phi-body">
+        ${!items.length
+          ? `<div style="padding:14px 0;color:var(--text3);font-size:11px;text-align:center">No picks today</div>`
+          : items.map(it=>`<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:2px">
+                <strong style="color:var(--accent2)">${esc(it.symbol||'–')}</strong>
+                <span class="signal-tag ${sigCls(it.signal)}">${esc(it.signal||'')}</span>
+              </div>
+              <div style="font-size:11px;color:var(--text2);line-height:1.5">${esc((it.headline||'').slice(0,100))}</div>
+            </div>`).join('')}
+      </div>
+    </div>`;
+  });
+  html += '</div></div>';
+  cont.innerHTML = html;
 }
 
 function toggleIns(id) {
-  const b = $(id); if(b) b.classList.toggle('open');
+  const b = document.getElementById(id);
+  if (b) b.classList.toggle('open');
+}
+function sigCls(s) {
+  if (!s) return 's-neu';
+  const l = s.toLowerCase();
+  return l.includes('positive') ? 's-pos' : l.includes('negative') ? 's-neg' : 's-neu';
 }
 
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 //  NAVIGATION
-// ══════════════════════════════════════════════════════════════════════
-function switchMain(tab) {
-  S.mainTab = tab;
-  qsa('.main-nav .mnav').forEach((el,i) =>
-    el.classList.toggle('on', ['nse','bse','combined','important','opportunities','insights','about'][i]===tab));
-  qsa('.pane').forEach(p => p.classList.remove('on'));
-  $('pane-'+tab)?.classList.add('on');
+// ════════════════════════════════════════════════════════
+function setMain(tab) {
+  G.main = tab;
+  $$('.nav-tab').forEach((el,i) =>
+    el.classList.toggle('on', ['nse','bse','combined','important','opportunities','insights','about'][i] === tab));
+  $$('.pane').forEach(p => p.classList.remove('on'));
+  const p = $(`pane-${tab}`);
+  if (p) p.classList.add('on');
 
   const hasSidebar = ['nse','bse','combined'].includes(tab);
-  $('sidebar').style.display = hasSidebar ? 'block' : 'none';
-
+  $('sidebar').style.display = hasSidebar ? '' : 'none';
   if (hasSidebar) buildSidebar();
-  if      (tab==='nse')          renderNSE();
-  else if (tab==='bse')          renderBSE();
-  else if (tab==='combined')     renderCombined();
-  else if (tab==='important')    renderImportant();
-  else if (tab==='opportunities') renderOpps();
-  else if (tab==='insights')     renderInsights();
+
+  if (tab === 'nse')      renderNSE();
+  else if (tab === 'bse') renderBSE();
+  else if (tab === 'combined') renderCombined();
+  else if (tab === 'important') renderImportant();
+  else if (tab === 'opportunities') renderOpps();
+  else if (tab === 'insights') renderInsights();
 }
 
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmt(s) {
+  if (!s) return '–';
+  try {
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return String(s).slice(0,16);
+    return d.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});
+  } catch { return String(s).slice(0,16) }
+}
+function empty(icon, title, desc) {
+  return `<div class="empty-state"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-desc">${desc}</div></div>`;
+}
+
+// ════════════════════════════════════════════════════════
 //  INIT
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
   setInterval(loadData, 5 * 60 * 1000); // auto-refresh every 5 min
   loadData();
