@@ -1,0 +1,73 @@
+name: Daily Exchange Filings Scraper
+
+on:
+  schedule:
+    # Runs at 18:00 UTC = 11:30 PM IST every day
+    - cron: '0 18 * * 1-5'   # Weekdays only (Mon-Fri, market days)
+    - cron: '30 18 * * 6'    # Saturday lite run (SME/announcements)
+  workflow_dispatch:           # Allow manual trigger anytime from GitHub UI
+
+jobs:
+  scrape-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # Needed to commit data files and push to gh-pages
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run scrapers
+        run: |
+          cd scrapers
+          python main.py
+        env:
+          PYTHONUNBUFFERED: "1"
+
+      - name: Check if data files were created
+        run: |
+          echo "=== JSON files ==="
+          ls -la data/json/ || echo "No JSON files"
+          echo "=== CSV files ==="
+          ls -la data/csv/ || echo "No CSV files"
+          echo "=== Dashboard data ==="
+          ls -la docs/data.json || echo "No dashboard data"
+
+      - name: Commit and push data files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "Exchange Filings Bot"
+          git add data/ docs/data.json
+          git diff --staged --quiet || git commit -m "📊 Daily filings update: $(date +'%Y-%m-%d %H:%M IST')"
+          git push
+        continue-on-error: true   # Don't fail if nothing changed
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          publish_branch: gh-pages
+          force_orphan: false
+          commit_message: "🌐 Dashboard update: $(date +'%Y-%m-%d')"
+
+      - name: Send summary (optional — add Telegram/email secrets if needed)
+        if: always()
+        run: |
+          echo "Scraping complete. Check the dashboard!"
+          # Uncomment and add secrets to enable Telegram alerts:
+          # curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+          #   -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+          #   -d text="✅ Exchange Filings updated for $(date +'%d %b %Y'). Check dashboard!"

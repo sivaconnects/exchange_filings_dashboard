@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>India Exchange Filings Dashboard — NSE & BSE</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --teal: #39d353;
+    --nse-color: #00c4cc;
+    --bse-color: #ff6b35;
+    --sme-color: #bc8cff;
+    --equity-color: #58a6ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
+
+  /* ── HEADER ── */
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--nse-color), var(--accent)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .logo h1 { font-size: 18px; font-weight: 700; }
+  .logo p { font-size: 11px; color: var(--muted); }
+  .header-meta { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .badge { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; font-size: 12px; color: var(--muted); }
+  .badge span { color: var(--green); font-weight: 600; }
+  #last-updated { font-size: 11px; color: var(--muted); }
+  .refresh-btn { background: var(--accent); color: #000; border: none; border-radius: 6px; padding: 6px 14px; cursor: pointer; font-size: 12px; font-weight: 600; }
+
+  /* ── STATS BAR ── */
+  .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
+  .stat-card { background: var(--surface); padding: 16px 20px; }
+  .stat-card .num { font-size: 28px; font-weight: 700; line-height: 1; }
+  .stat-card .label { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── NAV TABS ── */
+  .nav-tabs { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; gap: 0; overflow-x: auto; }
+  .tab { padding: 14px 20px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); font-size: 13px; font-weight: 500; white-space: nowrap; transition: all 0.2s; display: flex; align-items: center; gap: 6px; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab .count { background: var(--surface2); border-radius: 10px; padding: 2px 7px; font-size: 11px; }
+
+  /* ── LAYOUT ── */
+  .main { display: flex; min-height: calc(100vh - 200px); }
+  .sidebar { width: 240px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); padding: 16px 0; }
+  .content { flex: 1; overflow: hidden; }
+  
+  /* ── SIDEBAR ── */
+  .sidebar-section { margin-bottom: 8px; }
+  .sidebar-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 8px 20px 4px; }
+  .sidebar-item { padding: 8px 20px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border-left: 2px solid transparent; color: var(--muted); font-size: 13px; transition: all 0.15s; }
+  .sidebar-item:hover { background: var(--surface2); color: var(--text); }
+  .sidebar-item.active { color: var(--text); border-left-color: var(--accent); background: rgba(88,166,255,0.08); }
+  .sidebar-item .cnt { font-size: 11px; background: var(--surface2); border-radius: 8px; padding: 1px 6px; }
+  .segment-toggle { display: flex; gap: 4px; padding: 8px 16px; }
+  .seg-btn { flex: 1; padding: 6px; border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.15s; }
+  .seg-btn.active { background: var(--equity-color); color: #000; border-color: var(--equity-color); }
+  .seg-btn.sme.active { background: var(--sme-color); color: #000; border-color: var(--sme-color); }
+
+  /* ── CONTENT AREA ── */
+  .section-header { padding: 20px 24px 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); }
+  .section-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .section-subtitle { font-size: 12px; color: var(--muted); }
+  .search-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 12px; color: var(--text); font-size: 13px; width: 220px; outline: none; }
+  .search-box:focus { border-color: var(--accent); }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: var(--surface2); padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  tbody td { padding: 10px 16px; vertical-align: top; font-size: 13px; }
+  .td-symbol { font-weight: 700; color: var(--accent); font-size: 13px; }
+  .td-company { color: var(--text); max-width: 200px; }
+  .td-subject { color: var(--muted); max-width: 280px; font-size: 12px; line-height: 1.4; }
+  .td-date { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+  /* ── BADGES ── */
+  .badge-exchange { border-radius: 4px; padding: 2px 7px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
+  .badge-nse { background: rgba(0,196,204,0.15); color: var(--nse-color); border: 1px solid rgba(0,196,204,0.3); }
+  .badge-bse { background: rgba(255,107,53,0.15); color: var(--bse-color); border: 1px solid rgba(255,107,53,0.3); }
+  .badge-equity { background: rgba(88,166,255,0.15); color: var(--equity-color); border: 1px solid rgba(88,166,255,0.3); }
+  .badge-sme { background: rgba(188,140,255,0.15); color: var(--sme-color); border: 1px solid rgba(188,140,255,0.3); }
+
+  /* ── OPPORTUNITIES ── */
+  .opp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; padding: 20px 24px; }
+  .opp-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; transition: border-color 0.2s; }
+  .opp-card:hover { border-color: var(--accent); }
+  .opp-card.high { border-left: 3px solid var(--green); }
+  .opp-card.moderate { border-left: 3px solid var(--orange); }
+  .opp-card.watch { border-left: 3px solid var(--accent); }
+  .opp-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+  .opp-symbol { font-size: 16px; font-weight: 700; color: var(--accent); }
+  .opp-company { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .opp-score { font-size: 20px; font-weight: 800; }
+  .score-high { color: var(--green); }
+  .score-moderate { color: var(--orange); }
+  .score-watch { color: var(--accent); }
+  .opp-level { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
+  .opp-signals { display: flex; flex-wrap: wrap; gap: 4px; }
+  .signal-chip { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 12px; padding: 3px 9px; font-size: 11px; color: var(--muted); }
+  .opp-meta { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .opp-category { font-size: 11px; color: var(--muted); }
+
+  /* ── IMPORTANT FILINGS SECTION ── */
+  .imp-list { padding: 0; }
+  .imp-item { padding: 14px 24px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 100px 1fr auto; gap: 16px; align-items: start; }
+  .imp-item:hover { background: rgba(255,255,255,0.02); }
+  .imp-left { }
+  .imp-symbol { font-weight: 700; color: var(--accent); font-size: 14px; }
+  .imp-exchange-badges { display: flex; gap: 4px; margin-top: 4px; }
+  .imp-subject { font-size: 13px; color: var(--text); margin-bottom: 4px; line-height: 1.5; }
+  .imp-company { font-size: 12px; color: var(--muted); }
+  .imp-date { font-size: 11px; color: var(--muted); text-align: right; white-space: nowrap; }
+  .category-icon { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; }
+  .cat-board { background: #ff9500; }
+  .cat-result { background: var(--green); }
+  .cat-action { background: var(--purple); }
+
+  /* ── TABS within sections ── */
+  .sub-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 24px; background: var(--surface); }
+  .sub-tab { padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); font-size: 12px; white-space: nowrap; transition: all 0.2s; }
+  .sub-tab:hover { color: var(--text); }
+  .sub-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state { text-align: center; padding: 60px 24px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-title { font-size: 16px; color: var(--text); margin-bottom: 8px; }
+  .empty-desc { font-size: 13px; max-width: 380px; margin: 0 auto; line-height: 1.6; }
+
+  /* ── LOADER ── */
+  .loader { display: flex; align-items: center; justify-content: center; padding: 60px; gap: 12px; color: var(--muted); }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── OPPORTUNITY HERO STATS ── */
+  .opp-hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 20px 24px; border-bottom: 1px solid var(--border); }
+  .opp-hero-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
+  .opp-hero-card .num { font-size: 32px; font-weight: 800; }
+  .opp-hero-card .lbl { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .num-green { color: var(--green); }
+  .num-orange { color: var(--orange); }
+  .num-blue { color: var(--accent); }
+
+  /* ── SECTION TABS ── */
+  .section-pane { display: none; }
+  .section-pane.active { display: block; }
+
+  /* ── HOW IT WORKS ── */
+  .how-it-works { padding: 24px; max-width: 900px; }
+  .how-it-works h2 { font-size: 18px; margin-bottom: 16px; }
+  .step-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .step-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 20px; }
+  .step-num { font-size: 28px; font-weight: 800; color: var(--accent); margin-bottom: 8px; }
+  .step-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .step-card p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  .info-box { background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.3); border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.6; }
+  .info-box strong { color: var(--accent); }
+
+  @media (max-width: 768px) {
+    .main { flex-direction: column; }
+    .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+    .opp-grid { grid-template-columns: 1fr; padding: 12px; }
+    .imp-item { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">📊</div>
+    <div>
+      <h1>India Exchange Filings</h1>
+      <p>NSE + BSE · Daily · Open Source · Free Forever</p>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="badge">Total Today: <span id="total-count">–</span></div>
+    <div class="badge">Opportunities: <span id="opp-count">–</span></div>
+    <div id="last-updated">Loading...</div>
+    <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+  </div>
+</header>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-card">
+    <div class="num" id="stat-total" style="color:var(--accent)">–</div>
+    <div class="label">Total Filings</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" id="stat-equity" style="color:var(--equity-color)">–</div>
+    <div class="label">Equity</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" id="stat-sme" style="color:var(--sme-color)">–</div>
+    <div class="label">SME / Emerge</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" id="stat-high-opp" style="color:var(--green)">–</div>
+    <div class="label">🔥 High Opportunities</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" id="stat-moderate-opp" style="color:var(--orange)">–</div>
+    <div class="label">✅ Moderate Opportunities</div>
+  </div>
+</div>
+
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <div class="tab active" onclick="switchMain('filings')">📋 Exchange Filings</div>
+  <div class="tab" onclick="switchMain('important')">⭐ Important Filings</div>
+  <div class="tab" onclick="switchMain('opportunities')">🎯 Opportunities</div>
+  <div class="tab" onclick="switchMain('about')">ℹ️ How It Works</div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="segment-toggle">
+      <button class="seg-btn active" id="btn-equity" onclick="setSegment('equity')">EQUITY</button>
+      <button class="seg-btn sme" id="btn-sme" onclick="setSegment('sme')">SME</button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Filing Categories</div>
+      <div class="sidebar-item active" onclick="setCategory('corporate_announcements')" id="cat-corporate_announcements">
+        📢 Announcements <span class="cnt" id="cnt-corporate_announcements">0</span>
+      </div>
+      <div class="sidebar-item" onclick="setCategory('board_meetings')" id="cat-board_meetings">
+        🏛️ Board Meetings <span class="cnt" id="cnt-board_meetings">0</span>
+      </div>
+      <div class="sidebar-item" onclick="setCategory('financial_results')" id="cat-financial_results">
+        📈 Financial Results <span class="cnt" id="cnt-financial_results">0</span>
+      </div>
+      <div class="sidebar-item" onclick="setCategory('corporate_actions')" id="cat-corporate_actions">
+        ⚡ Corporate Actions <span class="cnt" id="cnt-corporate_actions">0</span>
+      </div>
+      <div class="sidebar-item" onclick="setCategory('shareholding_patterns')" id="cat-shareholding_patterns">
+        🏦 Shareholding <span class="cnt" id="cnt-shareholding_patterns">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- FILINGS PANE -->
+    <div class="section-pane active" id="pane-filings">
+      <div class="section-header">
+        <div>
+          <div class="section-title" id="section-title">📢 Corporate Announcements</div>
+          <div class="section-subtitle" id="section-subtitle">All filings from NSE and BSE combined</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input class="search-box" id="search-box" placeholder="Search symbol or company..." oninput="renderTable()"/>
+          <select id="exchange-filter" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px;" onchange="renderTable()">
+            <option value="">All Exchanges</option>
+            <option value="NSE">NSE</option>
+            <option value="BSE">BSE</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap" id="filings-table-wrap">
+        <div class="loader"><div class="spinner"></div> Loading filings...</div>
+      </div>
+    </div>
+
+    <!-- IMPORTANT FILINGS PANE -->
+    <div class="section-pane" id="pane-important">
+      <div class="section-header">
+        <div>
+          <div class="section-title">⭐ Important Filings — Combined</div>
+          <div class="section-subtitle">Board Meetings, Financial Results & Corporate Actions from both exchanges</div>
+        </div>
+        <input class="search-box" id="imp-search" placeholder="Search..." oninput="renderImportant()"/>
+      </div>
+      <div class="sub-tabs">
+        <div class="sub-tab active" onclick="setImpFilter('all')">All</div>
+        <div class="sub-tab" onclick="setImpFilter('Board Meeting')">🏛️ Board Meetings</div>
+        <div class="sub-tab" onclick="setImpFilter('Financial Result')">📈 Results</div>
+        <div class="sub-tab" onclick="setImpFilter('Corporate Action')">⚡ Actions</div>
+      </div>
+      <div id="important-list">
+        <div class="loader"><div class="spinner"></div> Loading...</div>
+      </div>
+    </div>
+
+    <!-- OPPORTUNITIES PANE -->
+    <div class="section-pane" id="pane-opportunities">
+      <div class="section-header">
+        <div>
+          <div class="section-title">🎯 Multibagger Opportunity Radar</div>
+          <div class="section-subtitle">AI-scored signals for high-growth stocks — before institutional discovery</div>
+        </div>
+        <input class="search-box" id="opp-search" placeholder="Search..." oninput="renderOpportunities()"/>
+      </div>
+      <div class="opp-hero" id="opp-hero-stats"></div>
+      <div class="sub-tabs">
+        <div class="sub-tab active" onclick="setOppFilter('all')">All Signals</div>
+        <div class="sub-tab" onclick="setOppFilter('high')">🔥 High</div>
+        <div class="sub-tab" onclick="setOppFilter('moderate')">✅ Moderate</div>
+        <div class="sub-tab" onclick="setOppFilter('watch')">👀 Watch</div>
+      </div>
+      <div class="opp-grid" id="opportunities-grid">
+        <div class="loader"><div class="spinner"></div> Analyzing opportunities...</div>
+      </div>
+    </div>
+
+    <!-- ABOUT PANE -->
+    <div class="section-pane" id="pane-about">
+      <div class="how-it-works">
+        <h2>How This Dashboard Works</h2>
+        <div class="info-box">
+          <strong>100% Free. No subscription. No API keys.</strong> This is an open-source project that scrapes NSE and BSE exchange filings daily using GitHub Actions and publishes the results here via GitHub Pages. All data is stored as JSON/CSV files in this repository — free for everyone to use, fork, and improve.
+        </div>
+        <div class="step-list">
+          <div class="step-card">
+            <div class="step-num">01</div>
+            <h3>Daily Web Scraping</h3>
+            <p>A Python script runs every night at ~11:30 PM IST using GitHub Actions. It scrapes NSE and BSE for all corporate filings of that day — announcements, board meetings, results, actions, and shareholding patterns.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">02</div>
+            <h3>Data Stored as Files</h3>
+            <p>All scraped data is saved as JSON and CSV files directly in the GitHub repository under <code>data/</code>. No database needed. You can download any day's data directly from GitHub.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">03</div>
+            <h3>Opportunity Scoring</h3>
+            <p>Every filing is automatically scored for investment signals — promoter buying, bonus issues, buybacks, expansion plans, turnaround indicators, FII/DII entry patterns, and more.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">04</div>
+            <h3>Published Free</h3>
+            <p>GitHub Pages serves this dashboard for free. GitHub Actions runs the scraper for free (2,000 minutes/month). The whole stack costs ₹0.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">05</div>
+            <h3>Multibagger Philosophy</h3>
+            <p>The best opportunities are found before institutional investors enter. Promoter stake increases, strong SME results, unusual board meeting agendas — these are early signals the big money hasn't moved on yet.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">06</div>
+            <h3>Open Source Forever</h3>
+            <p>Fork it, improve it, add your own signals. The goal is to democratize the research process that was previously available only to large investors with expensive Bloomberg terminals.</p>
+          </div>
+        </div>
+        <div style="margin-top:24px;">
+          <div class="info-box">
+            <strong>⚠️ Disclaimer:</strong> This tool is for informational and research purposes only. It is not financial advice. Always do your own due diligence before investing. The opportunity scores are algorithmic and do not guarantee returns.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let STATE = {
+  data: null,
+  segment: 'equity',
+  category: 'corporate_announcements',
+  mainTab: 'filings',
+  impFilter: 'all',
+  oppFilter: 'all'
+};
+
+// ── Data Loading ───────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('last-updated').textContent = 'Fetching...';
+  try {
+    // Try fetching fresh data.json from same origin (GitHub Pages)
+    const resp = await fetch('./data.json?t=' + Date.now());
+    if (!resp.ok) throw new Error('No data file yet');
+    STATE.data = await resp.json();
+    renderAll();
+  } catch (e) {
+    // Show sample/demo data if no real data yet
+    STATE.data = getDemoData();
+    renderAll();
+    document.getElementById('last-updated').textContent = '⚠️ Demo mode — run scraper to get real data';
+  }
+}
+
+// ── Render All ─────────────────────────────────────────────────
+function renderAll() {
+  const d = STATE.data;
+  if (!d) return;
+
+  // Header stats
+  const stats = d.stats || {};
+  document.getElementById('total-count').textContent = stats.total_filings || 0;
+  document.getElementById('opp-count').textContent = stats.opportunities_found || 0;
+  document.getElementById('stat-total').textContent = stats.total_filings || 0;
+  document.getElementById('stat-equity').textContent = stats.equity_filings || 0;
+  document.getElementById('stat-sme').textContent = stats.sme_filings || 0;
+  document.getElementById('stat-high-opp').textContent = stats.high_opportunity_count || 0;
+  document.getElementById('stat-moderate-opp').textContent = (d.opportunities?.moderate_opportunity || []).length;
+
+  const dt = d.last_updated ? new Date(d.last_updated).toLocaleString('en-IN', {timeZone:'Asia/Kolkata'}) : 'Unknown';
+  document.getElementById('last-updated').textContent = `Last updated: ${dt} IST`;
+
+  updateSidebarCounts();
+  renderTable();
+  renderImportant();
+  renderOpportunities();
+}
+
+function updateSidebarCounts() {
+  const d = STATE.data;
+  if (!d) return;
+  const seg = d[STATE.segment] || {};
+  const cats = ['corporate_announcements','board_meetings','financial_results','corporate_actions','shareholding_patterns'];
+  cats.forEach(c => {
+    const el = document.getElementById('cnt-' + c);
+    if (el) el.textContent = (seg[c] || []).length;
+  });
+}
+
+// ── Filings Table ──────────────────────────────────────────────
+function renderTable() {
+  const d = STATE.data;
+  if (!d) return;
+
+  const seg = d[STATE.segment] || {};
+  let rows = seg[STATE.category] || [];
+
+  const search = (document.getElementById('search-box')?.value || '').toLowerCase();
+  const excFilter = document.getElementById('exchange-filter')?.value || '';
+
+  if (search) rows = rows.filter(r =>
+    (r.symbol||'').toLowerCase().includes(search) ||
+    (r.company||'').toLowerCase().includes(search) ||
+    (r.subject||'').toLowerCase().includes(search)
+  );
+  if (excFilter) rows = rows.filter(r => r.exchange === excFilter);
+
+  const wrap = document.getElementById('filings-table-wrap');
+  
+  if (!rows.length) {
+    wrap.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <div class="empty-title">No filings found</div>
+      <div class="empty-desc">No ${STATE.category.replace(/_/g,' ')} for ${STATE.segment.toUpperCase()} today, or the scraper hasn't run yet. Run the Python scraper to populate data.</div>
+    </div>`;
+    return;
+  }
+
+  const heads = getHeaders(STATE.category);
+  const html = `<table>
+    <thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r => renderRow(r, STATE.category)).join('')}</tbody>
+  </table>`;
+  wrap.innerHTML = html;
+}
+
+function getHeaders(cat) {
+  const base = ['Exchange','Segment','Symbol','Company'];
+  const extra = {
+    corporate_announcements: ['Subject','Filing Date'],
+    board_meetings: ['Purpose','Meeting Date','Filing Date'],
+    financial_results: ['Period','Type','Filing Date'],
+    corporate_actions: ['Action','Ex-Date','Record Date'],
+    shareholding_patterns: ['Period','Promoter %','Public %','Filing Date']
+  };
+  return [...base, ...(extra[cat] || ['Subject','Date'])];
+}
+
+function renderRow(r, cat) {
+  const exc = r.exchange === 'NSE'
+    ? `<span class="badge-exchange badge-nse">NSE</span>`
+    : `<span class="badge-exchange badge-bse">BSE</span>`;
+  const seg = r.segment === 'SME'
+    ? `<span class="badge-exchange badge-sme">SME</span>`
+    : `<span class="badge-exchange badge-equity">EQ</span>`;
+
+  const base = `<td>${exc}</td><td>${seg}</td>
+    <td class="td-symbol">${r.symbol || '–'}</td>
+    <td class="td-company">${r.company || '–'}</td>`;
+
+  const extras = {
+    corporate_announcements: `<td class="td-subject">${r.subject || '–'}</td><td class="td-date">${fmtDate(r.filing_date)}</td>`,
+    board_meetings: `<td class="td-subject">${r.subject || r.purpose || '–'}</td><td class="td-date">${fmtDate(r.meeting_date)}</td><td class="td-date">${fmtDate(r.filing_date)}</td>`,
+    financial_results: `<td>${r.period || '–'}</td><td>${r.result_type || 'Quarterly'}</td><td class="td-date">${fmtDate(r.filing_date)}</td>`,
+    corporate_actions: `<td class="td-subject">${r.action || '–'}</td><td class="td-date">${fmtDate(r.ex_date)}</td><td class="td-date">${fmtDate(r.record_date)}</td>`,
+    shareholding_patterns: `<td>${r.period || '–'}</td><td>${r.promoter_holding || '–'}</td><td>${r.public_holding || '–'}</td><td class="td-date">${fmtDate(r.filing_date)}</td>`
+  };
+
+  return `<tr>${base}${extras[cat] || ''}</tr>`;
+}
+
+// ── Important Filings ──────────────────────────────────────────
+let _impFilter = 'all';
+function setImpFilter(f) {
+  _impFilter = f;
+  document.querySelectorAll('.sub-tabs .sub-tab').forEach((el, i) => {
+    el.classList.toggle('active', ['all','Board Meeting','Financial Result','Corporate Action'][i] === f);
+  });
+  renderImportant();
+}
+
+function renderImportant() {
+  const d = STATE.data;
+  if (!d) return;
+  let rows = d.important_filings || [];
+  const search = (document.getElementById('imp-search')?.value || '').toLowerCase();
+  if (_impFilter !== 'all') rows = rows.filter(r => r.category === _impFilter);
+  if (search) rows = rows.filter(r =>
+    (r.symbol||'').toLowerCase().includes(search) ||
+    (r.company||'').toLowerCase().includes(search)
+  );
+
+  const list = document.getElementById('important-list');
+  if (!rows.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">⭐</div><div class="empty-title">No important filings yet</div><div class="empty-desc">Run the scraper to populate this section.</div></div>`;
+    return;
+  }
+
+  const catIcon = { 'Board Meeting':'cat-board', 'Financial Result':'cat-result', 'Corporate Action':'cat-action' };
+  list.innerHTML = `<div class="imp-list">${rows.map(r => `
+    <div class="imp-item">
+      <div class="imp-left">
+        <div class="imp-symbol">${r.symbol || '–'}</div>
+        <div class="imp-exchange-badges">
+          ${r.exchange === 'NSE' ? '<span class="badge-exchange badge-nse">NSE</span>' : '<span class="badge-exchange badge-bse">BSE</span>'}
+          ${r.segment === 'SME' ? '<span class="badge-exchange badge-sme">SME</span>' : '<span class="badge-exchange badge-equity">EQ</span>'}
+        </div>
+      </div>
+      <div>
+        <div class="imp-subject">
+          <span class="category-icon ${catIcon[r.category] || ''}"></span>
+          <strong>${r.category}</strong> — ${r.subject || r.action || r.purpose || ''}
+        </div>
+        <div class="imp-company">${r.company || ''}</div>
+      </div>
+      <div class="imp-date">${fmtDate(r.filing_date || r.meeting_date || r.ex_date)}</div>
+    </div>`).join('')}</div>`;
+}
+
+// ── Opportunities ──────────────────────────────────────────────
+let _oppFilter = 'all';
+function setOppFilter(f) {
+  _oppFilter = f;
+  document.querySelectorAll('#pane-opportunities .sub-tab').forEach((el, i) => {
+    el.classList.toggle('active', ['all','high','moderate','watch'][i] === f);
+  });
+  renderOpportunities();
+}
+
+function renderOpportunities() {
+  const d = STATE.data;
+  if (!d || !d.opportunities) return;
+  const opps = d.opportunities;
+
+  // Hero stats
+  document.getElementById('opp-hero-stats').innerHTML = `
+    <div class="opp-hero-card"><div class="num num-green">${(opps.high_opportunity||[]).length}</div><div class="lbl">🔥 High Opportunity</div></div>
+    <div class="opp-hero-card"><div class="num num-orange">${(opps.moderate_opportunity||[]).length}</div><div class="lbl">✅ Moderate</div></div>
+    <div class="opp-hero-card"><div class="num num-blue">${(opps.watch_list||[]).length}</div><div class="lbl">👀 Watch</div></div>
+    <div class="opp-hero-card"><div class="num" style="color:var(--text)">${opps.total_opportunities||0}</div><div class="lbl">Total Signals</div></div>`;
+
+  let rows = [];
+  if (_oppFilter === 'all') rows = opps.top_10 || [];
+  else if (_oppFilter === 'high') rows = opps.high_opportunity || [];
+  else if (_oppFilter === 'moderate') rows = opps.moderate_opportunity || [];
+  else if (_oppFilter === 'watch') rows = opps.watch_list || [];
+
+  const search = (document.getElementById('opp-search')?.value || '').toLowerCase();
+  if (search) rows = rows.filter(r =>
+    (r.symbol||'').toLowerCase().includes(search) ||
+    (r.company||'').toLowerCase().includes(search)
+  );
+
+  const grid = document.getElementById('opportunities-grid');
+  if (!rows.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">No opportunities found today</div>
+      <div class="empty-desc">The scraper analyzes every filing for investment signals. Run the scraper to see today's opportunities.</div>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = rows.map(r => {
+    const lvl = r.opportunity_score >= 8 ? 'high' : r.opportunity_score >= 5 ? 'moderate' : 'watch';
+    const scoreClass = lvl === 'high' ? 'score-high' : lvl === 'moderate' ? 'score-moderate' : 'score-watch';
+    const signals = (r.opportunity_signals || []).slice(0, 5);
+    return `<div class="opp-card ${lvl}">
+      <div class="opp-header">
+        <div>
+          <div class="opp-symbol">${r.symbol || '–'}</div>
+          <div class="opp-company">${r.company || ''}</div>
+        </div>
+        <div class="opp-score ${scoreClass}">${r.opportunity_score}</div>
+      </div>
+      <div class="opp-level">${r.opportunity_level || ''}</div>
+      <div class="opp-signals">${signals.map(s => `<span class="signal-chip">${s}</span>`).join('')}</div>
+      <div class="opp-meta">
+        <span class="opp-category">${r.category || ''}</span>
+        ${r.exchange === 'NSE' ? '<span class="badge-exchange badge-nse">NSE</span>' : '<span class="badge-exchange badge-bse">BSE</span>'}
+        ${r.segment === 'SME' ? '<span class="badge-exchange badge-sme">SME</span>' : '<span class="badge-exchange badge-equity">EQ</span>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Navigation ─────────────────────────────────────────────────
+function switchMain(tab) {
+  STATE.mainTab = tab;
+  document.querySelectorAll('.nav-tabs .tab').forEach((el, i) => {
+    el.classList.toggle('active', ['filings','important','opportunities','about'][i] === tab);
+  });
+  document.querySelectorAll('.section-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('pane-' + tab)?.classList.add('active');
+  document.getElementById('sidebar').style.display = tab === 'filings' ? 'block' : 'none';
+}
+
+function setSegment(seg) {
+  STATE.segment = seg;
+  document.getElementById('btn-equity').classList.toggle('active', seg === 'equity');
+  document.getElementById('btn-sme').classList.toggle('active', seg === 'sme');
+  updateSidebarCounts();
+  renderTable();
+}
+
+function setCategory(cat) {
+  STATE.category = cat;
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('cat-' + cat)?.classList.add('active');
+  const titles = {
+    corporate_announcements: ['📢 Corporate Announcements', 'Latest corporate disclosures and press releases'],
+    board_meetings: ['🏛️ Board Meetings', 'Upcoming and recent board meeting notices'],
+    financial_results: ['📈 Financial Results', 'Quarterly and annual results'],
+    corporate_actions: ['⚡ Corporate Actions', 'Dividends, bonus, splits, buybacks, rights issues'],
+    shareholding_patterns: ['🏦 Shareholding Patterns', 'Promoter, FII, DII, and public holding changes']
+  };
+  const [title, sub] = titles[cat] || ['Filings', ''];
+  document.getElementById('section-title').textContent = title;
+  document.getElementById('section-subtitle').textContent = sub;
+  renderTable();
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function fmtDate(s) {
+  if (!s) return '–';
+  try {
+    const d = new Date(s);
+    if (isNaN(d)) return s;
+    return d.toLocaleString('en-IN', {day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:true}).replace(',','');
+  } catch { return s; }
+}
+
+// ── Demo Data (shown when data.json not found) ────────────────
+function getDemoData() {
+  return {
+    last_updated: new Date().toISOString(),
+    date: new Date().toISOString().split('T')[0],
+    stats: { total_filings: 0, equity_filings: 0, sme_filings: 0, opportunities_found: 0, high_opportunity_count: 0 },
+    equity: { corporate_announcements:[], board_meetings:[], financial_results:[], corporate_actions:[], shareholding_patterns:[] },
+    sme: { corporate_announcements:[], board_meetings:[], financial_results:[], corporate_actions:[], shareholding_patterns:[] },
+    important_filings: [],
+    opportunities: { total_opportunities:0, high_opportunity:[], moderate_opportunity:[], watch_list:[], top_10:[] }
+  };
+}
+
+// ── Init ───────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', loadData);
+</script>
+</body>
+</html>
