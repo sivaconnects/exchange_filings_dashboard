@@ -1,7 +1,21 @@
 """
-BSE Exchange Filings Scraper
-Pure web scraping - no paid API
-Scrapes BSE India for Equity and SME filings
+BSE Exchange Filings Scraper  ─  Production Grade
+===================================================
+Covers BSE's own categories (separate from NSE):
+  • AGM / EGM
+  • Board Meetings
+  • Company Updates
+  • Corporate Actions
+  • Insider Trading / SAST
+  • New Listings
+  • Results  (Quarterly / Half-Yearly / Annual)
+  • Integrated Filings
+  • Others / All
+
+Both Equity (Main Board) and SME (BSE SME / Emerge) segments.
+
+BSE attachment URL pattern:
+  https://www.bseindia.com/xml-data/corpfiling/AttachLive/{ATTACHMENTNAME}
 """
 
 import requests
@@ -9,256 +23,267 @@ import json
 import time
 import logging
 from datetime import datetime
-from bs4 import BeautifulSoup
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from state_tracker import make_filing_id
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+# ─── Constants ────────────────────────────────────────────────────────
+BSE_HOME = "https://www.bseindia.com"
+BSE_API  = "https://api.bseindia.com/BseIndiaAPI/api"
+
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "Chrome/124.0.0.0 Safari/537.36",
     "Accept": "application/json, text/html, */*",
     "Accept-Language": "en-US,en;q=0.9",
-    "Referer": "https://www.bseindia.com/",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Origin":  "https://www.bseindia.com",
+    "Referer": "https://www.bseindia.com/corporates/ann.html",
+    "Connection": "keep-alive",
+    "DNT": "1",
 }
 
-BASE = "https://www.bseindia.com"
 SESSION = requests.Session()
+SESSION.headers.update(HEADERS)
+
+# BSE category code → human label
+BSE_CATEGORIES = {
+    "-1":            "All Announcements",
+    "AGM":           "AGM / EGM",
+    "BM":            "Board Meeting",
+    "Company Update": "Company Update",
+    "Corp. Action":  "Corporate Action",
+    "insider":       "Insider Trading / SAST",
+    "New Listing":   "New Listing",
+    "Result":        "Financial Result",
+    "Integrated":    "Integrated Filings",
+    "Others":        "Others",
+}
+
+# Segment code
+_SEG_CODE = {"equity": "E", "sme": "ES"}
+
+
+# ─── Session ──────────────────────────────────────────────────────────
 
 def init_session():
     try:
-        SESSION.get(BASE, headers=HEADERS, timeout=15)
+        SESSION.get(BSE_HOME, timeout=15)
         time.sleep(2)
-        logger.info("BSE session ready")
+        SESSION.get(f"{BSE_HOME}/corporates/ann.html", timeout=15)
+        time.sleep(1)
+        logger.info("BSE session initialised")
     except Exception as e:
-        logger.error(f"BSE session init: {e}")
+        logger.error(f"BSE session init failed: {e}")
 
-def today_bse():
-    """BSE uses dd/MM/YYYY format"""
+
+# ─── Helpers ──────────────────────────────────────────────────────────
+
+def _today() -> str:
+    """BSE expects dd/MM/YYYY"""
     return datetime.now().strftime("%d/%m/%Y")
 
-def safe_get(url, params=None):
-    try:
-        r = SESSION.get(url, headers=HEADERS, params=params, timeout=20)
-        r.raise_for_status()
-        ct = r.headers.get("Content-Type", "")
-        if "json" in ct:
-            return r.json()
-        return r.text
-    except Exception as e:
-        logger.error(f"BSE GET {url} → {e}")
-        return None
 
-# ─── BSE segment codes ──────────────────────────────────────────────
-# Equity: Category = 0 (All), Segment = E (Equity Main Board)
-# SME:    Segment = ES (SME/Emerge)
+def _att_url(filename: str) -> str:
+    if not filename:
+        return ""
+    filename = filename.strip()
+    if filename.startswith("http"):
+        return filename
+    return f"https://www.bseindia.com/xml-data/corpfiling/AttachLive/{filename}"
 
-def fetch_announcements(segment="equity"):
+
+def _safe_get(url: str, params: dict = None, retries: int = 3):
+    for attempt in range(retries):
+        try:
+            r = SESSION.get(url, params=params, timeout=20)
+            r.raise_for_status()
+            ct = r.headers.get("Content-Type", "")
+            if "json" in ct:
+                return r.json()
+            return None
+        except Exception as e:
+            wait = 2 ** attempt
+            logger.warning(f"BSE GET attempt {attempt+1} failed → {url} : {e}. Retry in {wait}s")
+            time.sleep(wait)
+    return None
+
+
+def _extract_items(raw) -> list:
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, dict):
+        for key in ("Table", "Table1", "data", "Data", "Result"):
+            val = raw.get(key)
+            if isinstance(val, list) and val:
+                return val
+    return []
+
+
+# ─── Announcements (all BSE categories via single endpoint) ───────────
+
+def fetch_by_category(cat_code: str, segment: str = "equity") -> list:
     """
-    BSE Corporate Announcements from the public listing page JSON endpoint
+    Generic fetch for any BSE announcement category.
+    Uses BSE's AnnGetData endpoint.
     """
-    today = today_bse()
-    seg_code = "E" if segment == "equity" else "ES"
-    url = f"{BASE}/corporates/ann.html"
-    
-    # Try the data endpoint BSE uses internally
-    data_url = "https://api.bseindia.com/BseIndiaAPI/api/AnnGetData/w"
+    today = _today()
+    seg_code = _SEG_CODE.get(segment, "E")
+    cat_label = BSE_CATEGORIES.get(cat_code, cat_code)
+
     params = {
-        "strCat": "-1",
-        "strType": "C",
-        "strScrip": "",
-        "strSearch": "P",
-        "strToDate": today,
+        "strCat":      cat_code,
+        "strType":     "C",
+        "strScrip":    "",
+        "strSearch":   "P",
+        "strToDate":   today,
         "strFromDate": today,
-        "mykey": "announcements",
-        "segment": seg_code
+        "mykey":       "announcements",
+        "segment":     seg_code,
     }
-    
-    raw = safe_get(data_url, params)
+    raw = _safe_get(f"{BSE_API}/AnnGetData/w", params)
+    items = _extract_items(raw)
+
     out = []
-    
-    if isinstance(raw, dict):
-        items = raw.get("Table", raw.get("data", []))
-    elif isinstance(raw, list):
-        items = raw
-    else:
-        items = []
-    
     for item in items:
-        out.append({
-            "exchange": "BSE", "segment": segment.upper(), "category": "Corporate Announcement",
-            "symbol": str(item.get("SCRIP_CD", item.get("scrip_cd", ""))),
-            "company": item.get("SLONGNAME", item.get("company_name", "")),
-            "subject": item.get("HEADLINE", item.get("headline", "")),
-            "filing_date": item.get("NEWS_DT", item.get("dt_tm", "")),
-            "attachment": item.get("ATTACHMENTNAME", ""),
-            "detail_url": f"https://www.bseindia.com/corporates/ann.html",
-            "scraped_at": datetime.now().isoformat()
-        })
-    
-    logger.info(f"BSE {segment} announcements: {len(out)}")
+        att_file = item.get("ATTACHMENTNAME", item.get("Attachmentname", ""))
+        filing = {
+            "exchange":       "BSE",
+            "segment":        segment.upper(),
+            "category":       cat_label,
+            "bse_category":   cat_code,
+            "filing_id":      str(item.get("NEWSID", item.get("NewsId", ""))),
+            "symbol":         str(item.get("SCRIP_CD", item.get("ScripCode", ""))),
+            "company":        item.get("SLONGNAME",    item.get("LongName", "")),
+            "subject":        item.get("HEADLINE",     item.get("Headline", "")),
+            "description":    item.get("NEWSSUB",      item.get("NewsSub", "")),
+            "filing_date":    item.get("NEWS_DT",      item.get("NewsDate", "")),
+            "subcategory":    item.get("SUBCATEGORYNAME", item.get("SubCatName", "")),
+            "attachment_url": _att_url(att_file),
+            "detail_url":     f"{BSE_HOME}/corporates/ann.html",
+            "scraped_at":     datetime.now().isoformat(),
+        }
+        filing["filing_id"] = filing["filing_id"] or make_filing_id(filing)
+        out.append(filing)
+
+    logger.info(f"BSE {segment} [{cat_label}]: {len(out)}")
     return out
 
-def fetch_board_meetings(segment="equity"):
-    today = today_bse()
-    seg_code = "E" if segment == "equity" else "ES"
-    
-    url = "https://api.bseindia.com/BseIndiaAPI/api/BoardMeetings/w"
+
+# ─── Dedicated Board Meetings endpoint ────────────────────────────────
+
+def fetch_board_meetings(segment: str = "equity") -> list:
+    today = _today()
+    seg_code = _SEG_CODE.get(segment, "E")
+
     params = {
         "strFromDate": today,
-        "strToDate": today,
-        "strScrip": "",
-        "segment": seg_code
+        "strToDate":   today,
+        "strScrip":    "",
+        "segment":     seg_code,
     }
-    
-    raw = safe_get(url, params)
+    raw = _safe_get(f"{BSE_API}/BoardMeetings/w", params)
+    items = _extract_items(raw)
+
+    if not items:
+        # Fallback to generic category fetch
+        return fetch_by_category("BM", segment)
+
     out = []
-    
-    items = []
-    if isinstance(raw, dict):
-        items = raw.get("Table", raw.get("data", []))
-    elif isinstance(raw, list):
-        items = raw
-    
     for item in items:
-        out.append({
-            "exchange": "BSE", "segment": segment.upper(), "category": "Board Meeting",
-            "symbol": str(item.get("SCRIP_CD", "")),
-            "company": item.get("SLONGNAME", item.get("company_name", "")),
-            "subject": item.get("PURPOSE", item.get("purpose", "")),
-            "meeting_date": item.get("MEETING_DATE", ""),
-            "filing_date": item.get("NEWS_DT", ""),
-            "detail_url": "https://www.bseindia.com/corporates/boardmeetings.html",
-            "scraped_at": datetime.now().isoformat()
-        })
-    
-    logger.info(f"BSE {segment} board meetings: {len(out)}")
+        filing = {
+            "exchange":     "BSE",
+            "segment":      segment.upper(),
+            "category":     "Board Meeting",
+            "bse_category": "BM",
+            "filing_id":    str(item.get("NEWSID", item.get("NewsId", ""))),
+            "symbol":       str(item.get("SCRIP_CD", item.get("ScripCode", ""))),
+            "company":      item.get("SLONGNAME", item.get("LongName", "")),
+            "subject":      item.get("PURPOSE",    item.get("Purpose", "")),
+            "description":  item.get("REMARKS",    item.get("Remarks", "")),
+            "meeting_date": item.get("MEETING_DATE", item.get("MeetingDate", "")),
+            "filing_date":  item.get("NEWS_DT",    item.get("NewsDate", "")),
+            "attachment_url": "",
+            "detail_url":   f"{BSE_HOME}/corporates/boardmeetings.html",
+            "scraped_at":   datetime.now().isoformat(),
+        }
+        filing["filing_id"] = filing["filing_id"] or make_filing_id(filing)
+        out.append(filing)
+
+    logger.info(f"BSE {segment} board meetings (dedicated): {len(out)}")
     return out
 
-def fetch_financial_results(segment="equity"):
-    today = today_bse()
-    seg_code = "E" if segment == "equity" else "ES"
-    
-    url = "https://api.bseindia.com/BseIndiaAPI/api/FinancialResults/w"
-    params = {
-        "strFromDate": today,
-        "strToDate": today,
-        "strScrip": "",
-        "strType": "Quarterly",
-        "segment": seg_code
-    }
-    
-    raw = safe_get(url, params)
-    out = []
-    items = []
-    
-    if isinstance(raw, dict):
-        items = raw.get("Table", raw.get("data", []))
-    elif isinstance(raw, list):
-        items = raw
-    
-    for item in items:
-        out.append({
-            "exchange": "BSE", "segment": segment.upper(), "category": "Financial Result",
-            "symbol": str(item.get("SCRIP_CD", "")),
-            "company": item.get("SLONGNAME", ""),
-            "period": item.get("PERIOD", item.get("quarter", "")),
-            "result_type": item.get("RESULT_TYPE", "Quarterly"),
-            "filing_date": item.get("NEWS_DT", ""),
-            "attachment": item.get("ATTACHMENT", ""),
-            "detail_url": "https://www.bseindia.com/corporates/financial-results.html",
-            "scraped_at": datetime.now().isoformat()
-        })
-    
-    logger.info(f"BSE {segment} results: {len(out)}")
-    return out
 
-def fetch_corporate_actions(segment="equity"):
-    today = today_bse()
-    seg_code = "E" if segment == "equity" else "ES"
-    
-    url = "https://api.bseindia.com/BseIndiaAPI/api/CorporateAction/w"
-    params = {
-        "strFromDate": today,
-        "strToDate": today,
-        "strScrip": "",
-        "segment": seg_code
-    }
-    
-    raw = safe_get(url, params)
-    out = []
-    items = []
-    
-    if isinstance(raw, dict):
-        items = raw.get("Table", raw.get("data", []))
-    elif isinstance(raw, list):
-        items = raw
-    
-    for item in items:
-        out.append({
-            "exchange": "BSE", "segment": segment.upper(), "category": "Corporate Action",
-            "symbol": str(item.get("SCRIP_CD", "")),
-            "company": item.get("SLONGNAME", ""),
-            "action": item.get("PURPOSE", item.get("action", "")),
-            "ex_date": item.get("EX_DATE", ""),
-            "record_date": item.get("RD_DATE", ""),
-            "remarks": item.get("REMARKS", ""),
-            "detail_url": "https://www.bseindia.com/corporates/corporate-actions.html",
-            "scraped_at": datetime.now().isoformat()
-        })
-    
-    logger.info(f"BSE {segment} actions: {len(out)}")
-    return out
+# ─── Shareholding Pattern ─────────────────────────────────────────────
 
-def fetch_shareholding(segment="equity"):
-    today = today_bse()
-    seg_code = "E" if segment == "equity" else "ES"
-    
-    url = "https://api.bseindia.com/BseIndiaAPI/api/ShareholdingPatterns/w"
+def fetch_shareholding(segment: str = "equity") -> list:
+    today = _today()
+    seg_code = _SEG_CODE.get(segment, "E")
+
     params = {
         "strFromDate": today,
-        "strToDate": today,
-        "strScrip": "",
-        "segment": seg_code
+        "strToDate":   today,
+        "strScrip":    "",
+        "segment":     seg_code,
     }
-    
-    raw = safe_get(url, params)
+    raw = _safe_get(f"{BSE_API}/ShareholdingPatterns/w", params)
+    items = _extract_items(raw)
+
     out = []
-    items = []
-    
-    if isinstance(raw, dict):
-        items = raw.get("Table", raw.get("data", []))
-    elif isinstance(raw, list):
-        items = raw
-    
     for item in items:
-        out.append({
-            "exchange": "BSE", "segment": segment.upper(), "category": "Shareholding Pattern",
-            "symbol": str(item.get("SCRIP_CD", "")),
-            "company": item.get("SLONGNAME", ""),
-            "period": item.get("QUARTER", ""),
-            "filing_date": item.get("NEWS_DT", ""),
-            "promoter_holding": item.get("PROMOTER_HOLDING", ""),
-            "public_holding": item.get("PUBLIC_HOLDING", ""),
-            "detail_url": "https://www.bseindia.com/corporates/shareholding-pattern.html",
-            "scraped_at": datetime.now().isoformat()
-        })
-    
+        att_file = item.get("ATTACHMENTNAME", "")
+        filing = {
+            "exchange":          "BSE",
+            "segment":           segment.upper(),
+            "category":          "Shareholding Pattern",
+            "bse_category":      "Shareholding",
+            "filing_id":         str(item.get("NEWSID", "")),
+            "symbol":            str(item.get("SCRIP_CD", "")),
+            "company":           item.get("SLONGNAME", ""),
+            "period":            item.get("QUARTER",   item.get("Period", "")),
+            "filing_date":       item.get("NEWS_DT",   ""),
+            "promoter_holding":  str(item.get("PROMOTER_HOLDING", "")),
+            "public_holding":    str(item.get("PUBLIC_HOLDING",   "")),
+            "fii_holding":       str(item.get("FII_HOLDING",      "")),
+            "dii_holding":       str(item.get("DII_HOLDING",      "")),
+            "attachment_url":    _att_url(att_file),
+            "detail_url":        f"{BSE_HOME}/corporates/shareholding-pattern.html",
+            "scraped_at":        datetime.now().isoformat(),
+        }
+        filing["filing_id"] = filing["filing_id"] or make_filing_id(filing)
+        out.append(filing)
+
     logger.info(f"BSE {segment} shareholding: {len(out)}")
     return out
 
-def scrape_all():
+
+# ─── Main Entry ───────────────────────────────────────────────────────
+
+def scrape_all() -> dict:
     init_session()
+
     result = {"equity": {}, "sme": {}}
-    
+
     for seg in ["equity", "sme"]:
-        result[seg]["corporate_announcements"] = fetch_announcements(seg);  time.sleep(1.5)
-        result[seg]["board_meetings"]           = fetch_board_meetings(seg); time.sleep(1.5)
-        result[seg]["financial_results"]        = fetch_financial_results(seg); time.sleep(1.5)
-        result[seg]["corporate_actions"]        = fetch_corporate_actions(seg); time.sleep(1.5)
-        result[seg]["shareholding_patterns"]    = fetch_shareholding(seg);   time.sleep(1.5)
-    
+        # All the BSE-specific category buckets
+        result[seg]["agm_egm"]            = fetch_by_category("AGM",            seg); time.sleep(1)
+        result[seg]["board_meetings"]     = fetch_board_meetings(seg);                time.sleep(1)
+        result[seg]["company_updates"]    = fetch_by_category("Company Update",  seg); time.sleep(1)
+        result[seg]["corporate_actions"]  = fetch_by_category("Corp. Action",    seg); time.sleep(1)
+        result[seg]["insider_trading"]    = fetch_by_category("insider",         seg); time.sleep(1)
+        result[seg]["new_listings"]       = fetch_by_category("New Listing",     seg); time.sleep(1)
+        result[seg]["results"]            = fetch_by_category("Result",          seg); time.sleep(1)
+        result[seg]["integrated_filings"] = fetch_by_category("Integrated",      seg); time.sleep(1)
+        result[seg]["others"]             = fetch_by_category("Others",          seg); time.sleep(1)
+        result[seg]["shareholding_patterns"] = fetch_shareholding(seg);               time.sleep(1)
+
     return result
+
 
 if __name__ == "__main__":
     d = scrape_all()
-    print(json.dumps(d, indent=2, default=str)[:3000])
+    print(json.dumps(d, indent=2, default=str)[:4000])

@@ -1,73 +1,132 @@
-name: Daily Exchange Filings Scraper
+name: Exchange Filings Scraper (Every 5 Min)
 
 on:
   schedule:
-    # Runs at 18:00 UTC = 11:30 PM IST every day
-    - cron: '0 18 * * 1-5'   # Weekdays only (Mon-Fri, market days)
-    - cron: '30 18 * * 6'    # Saturday lite run (SME/announcements)
-  workflow_dispatch:           # Allow manual trigger anytime from GitHub UI
+    # ── Market hours: 9:00 AM – 6:00 PM IST = 3:30 AM – 12:30 PM UTC ──
+    # Runs every 5 minutes during NSE/BSE trading + post-market filings window
+    - cron: '*/5 3-12 * * 1-5'   # Mon–Fri, 3:00–12:59 UTC (covers 8:30 AM–6:29 PM IST)
+    # ── Evening run: catch late filings up to 9 PM IST ──
+    - cron: '*/15 13-15 * * 1-5'  # Every 15 min, 1:00–3:59 PM UTC (6:30–9:29 PM IST)
+    # ── Saturday: SME / delayed filings ──
+    - cron: '0 4,6,8 * * 6'       # 3 runs on Saturday
+  workflow_dispatch:
+    inputs:
+      force_full:
+        description: 'Force full re-scrape (ignore dedup state)'
+        required: false
+        default: 'false'
+
+# ── Prevent concurrent runs — only one scraper at a time ──────────────
+concurrency:
+  group: scraper-run
+  cancel-in-progress: false   # Queue, don't cancel — we want every run to complete
 
 jobs:
   scrape-and-publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 15       # Kill if scraper hangs
+
     permissions:
-      contents: write   # Needed to commit data files and push to gh-pages
+      contents: write
+      pages: write
+      id-token: write
 
     steps:
+      # ── 1. Checkout (with full history for incremental state file) ──
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
 
-      - name: Set up Python
+      # ── 2. Python setup ────────────────────────────────────────────
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
+          cache-dependency-path: requirements.txt
 
+      # ── 3. Install dependencies ────────────────────────────────────
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt --quiet
 
-      - name: Run scrapers
+      # ── 4. Run scrapers ────────────────────────────────────────────
+      - name: Run Exchange Filings Scraper
+        id: scraper
         run: |
           cd scrapers
           python main.py
         env:
           PYTHONUNBUFFERED: "1"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FORCE_FULL: ${{ github.event.inputs.force_full || 'false' }}
 
-      - name: Check if data files were created
+      # ── 5. Check what changed ──────────────────────────────────────
+      - name: Check for new data
+        id: check_changes
         run: |
-          echo "=== JSON files ==="
-          ls -la data/json/ || echo "No JSON files"
-          echo "=== CSV files ==="
-          ls -la data/csv/ || echo "No CSV files"
-          echo "=== Dashboard data ==="
-          ls -la docs/data.json || echo "No dashboard data"
+          git diff --name-only HEAD
+          CHANGED=$(git diff --name-only HEAD | grep -E "^(data/|docs/data\.json|scrapers/state\.json)" | wc -l)
+          echo "changed_files=$CHANGED" >> $GITHUB_OUTPUT
+          echo "Changed files: $CHANGED"
 
-      - name: Commit and push data files
+      # ── 6. Commit data files (only if something new) ───────────────
+      - name: Commit new filings data
+        if: steps.check_changes.outputs.changed_files > 0
         run: |
-          git config --local user.email "action@github.com"
+          git config --local user.email "filings-bot@github-actions"
           git config --local user.name "Exchange Filings Bot"
-          git add data/ docs/data.json
-          git diff --staged --quiet || git commit -m "📊 Daily filings update: $(date +'%Y-%m-%d %H:%M IST')"
+          git add data/ docs/data.json scrapers/state.json
+          git commit -m "📊 Filings update — $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')" || echo "Nothing to commit"
           git push
-        continue-on-error: true   # Don't fail if nothing changed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # ── 7. Deploy dashboard to GitHub Pages ───────────────────────
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        if: steps.check_changes.outputs.changed_files > 0
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
           publish_branch: gh-pages
           force_orphan: false
-          commit_message: "🌐 Dashboard update: $(date +'%Y-%m-%d')"
+          commit_message: "🌐 Dashboard — $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')"
+          keep_files: true
 
-      - name: Send summary (optional — add Telegram/email secrets if needed)
+      # ── 8. Optional Telegram alert ─────────────────────────────────
+      - name: Telegram alert (if secrets set)
+        if: steps.check_changes.outputs.changed_files > 0 && secrets.TELEGRAM_BOT_TOKEN != ''
+        run: |
+          COUNT=$(python -c "
+          import json, pathlib
+          try:
+              d = json.loads(pathlib.Path('docs/data.json').read_text())
+              s = d.get('stats', {})
+              print(f\"NSE: {s.get('nse_filings',0)}  BSE: {s.get('bse_filings',0)}  Opps: {s.get('opportunities_found',0)}\")
+          except: print('data updated')
+          ")
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="📊 <b>Exchange Filings Updated</b>%0A$(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')%0A$COUNT" || true
+
+      # ── 9. Summary ────────────────────────────────────────────────
+      - name: Job summary
         if: always()
         run: |
-          echo "Scraping complete. Check the dashboard!"
-          # Uncomment and add secrets to enable Telegram alerts:
-          # curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-          #   -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-          #   -d text="✅ Exchange Filings updated for $(date +'%d %b %Y'). Check dashboard!"
+          echo "### Exchange Filings Run" >> $GITHUB_STEP_SUMMARY
+          echo "**Time (IST):** $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M')" >> $GITHUB_STEP_SUMMARY
+          echo "**New data:** ${{ steps.check_changes.outputs.changed_files }} files changed" >> $GITHUB_STEP_SUMMARY
+          if [ -f docs/data.json ]; then
+            python -c "
+          import json
+          d = json.load(open('docs/data.json'))
+          s = d.get('stats', {})
+          print(f\"| NSE Filings | {s.get('nse_filings', 0)} |\")
+          print(f\"| BSE Filings | {s.get('bse_filings', 0)} |\")
+          print(f\"| Opportunities | {s.get('opportunities_found', 0)} |\")
+          print(f\"| High Opps | {s.get('high_opportunity_count', 0)} |\")
+            " >> $GITHUB_STEP_SUMMARY || true
+          fi
