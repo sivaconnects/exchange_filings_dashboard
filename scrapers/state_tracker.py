@@ -23,7 +23,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 ROOT      = Path(__file__).parent.parent
-STATE_FILE = ROOT / "data" / "state.json"
+STATE_FILE = ROOT / "data" / "state.json"  # committed alongside data/
 
 # Maximum IDs to keep per bucket (prevents unbounded growth)
 _MAX_IDS = 2000

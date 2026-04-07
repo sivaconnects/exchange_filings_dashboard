@@ -294,11 +294,9 @@ def main():
     # Save state early
     st.save_state(state)
 
-    if nse_new_count == 0 and bse_new_count == 0:
-        logger.info("No new filings this run — skipping downstream steps")
-        return
-
     # ── Load & merge into existing dashboard data ──
+    # NOTE: We ALWAYS write docs/data.json — even with 0 new filings —
+    # so the dashboard shows a fresh timestamp and the file always exists.
     existing = _load_existing_dashboard()
     _merge_nse_into_dashboard(existing, nse_new)
     _merge_bse_into_dashboard(existing, bse_new)
@@ -322,7 +320,7 @@ def main():
     else:
         logger.info("ANTHROPIC_API_KEY not set — skipping LLM insights")
 
-    # ── Save raw daily JSON ──
+    # ── Save raw daily JSON (only when there are new items) ──
     if nse_new_count:
         save_json(nse_new, f"nse_{today_str}.json")
     if bse_new_count:
@@ -345,7 +343,7 @@ def main():
     # ── Summary ──
     stats = dashboard["stats"]
     logger.info("=== RUN COMPLETE ===")
-    logger.info(f"  New this run  — NSE: {nse_new_count}  BSE: {bse_new_count}")
+    logger.info(f"  New this run  — NSE: {nse_new_count}  BSE: {bse_new_count}  (0 = APIs may be rate-limiting, data.json still updated)")
     logger.info(f"  Total today   — NSE: {stats['nse_filings']}  BSE: {stats['bse_filings']}")
     logger.info(f"  Opportunities : {stats['opportunities_found']}  (High: {stats['high_opportunity_count']})")
     logger.info(f"  LLM insights  : {stats['insights_generated']}")

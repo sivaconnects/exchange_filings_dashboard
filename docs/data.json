@@ -1,0 +1,89 @@
+{
+  "last_updated": "2026-04-07T00:00:00",
+  "date": "2026-04-07",
+  "nse": {
+    "equity": {
+      "corporate_announcements": [],
+      "board_meetings": [],
+      "financial_results": [],
+      "corporate_actions": [],
+      "shareholding_patterns": []
+    },
+    "sme": {
+      "corporate_announcements": [],
+      "board_meetings": [],
+      "financial_results": [],
+      "corporate_actions": [],
+      "shareholding_patterns": []
+    }
+  },
+  "bse": {
+    "equity": {
+      "corporate_announcements": [],
+      "agm_egm": [],
+      "board_meetings": [],
+      "company_updates": [],
+      "corporate_actions": [],
+      "insider_trading": [],
+      "new_listings": [],
+      "results": [],
+      "integrated_filings": [],
+      "others": [],
+      "shareholding_patterns": []
+    },
+    "sme": {
+      "corporate_announcements": [],
+      "agm_egm": [],
+      "board_meetings": [],
+      "company_updates": [],
+      "corporate_actions": [],
+      "insider_trading": [],
+      "new_listings": [],
+      "results": [],
+      "integrated_filings": [],
+      "others": [],
+      "shareholding_patterns": []
+    }
+  },
+  "combined": {
+    "equity": {
+      "corporate_announcements": [],
+      "board_meetings": [],
+      "financial_results": [],
+      "corporate_actions": [],
+      "shareholding_patterns": [],
+      "insider_trading": []
+    },
+    "sme": {
+      "corporate_announcements": [],
+      "board_meetings": [],
+      "financial_results": [],
+      "corporate_actions": [],
+      "shareholding_patterns": [],
+      "insider_trading": []
+    }
+  },
+  "important_filings": [],
+  "opportunities": {
+    "generated_at": "2026-04-07T00:00:00",
+    "total_opportunities": 0,
+    "high_opportunity": [],
+    "moderate_opportunity": [],
+    "watch_list": [],
+    "red_flags": [],
+    "top_10": []
+  },
+  "insights": {
+    "generated_at": "2026-04-07T00:00:00",
+    "model_used": "none",
+    "total_insights": 0
+  },
+  "stats": {
+    "total_filings": 0,
+    "nse_filings": 0,
+    "bse_filings": 0,
+    "opportunities_found": 0,
+    "high_opportunity_count": 0,
+    "insights_generated": 0
+  }
+}

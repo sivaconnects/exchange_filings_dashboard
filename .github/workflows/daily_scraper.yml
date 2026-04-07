@@ -1,30 +1,33 @@
-name: Exchange Filings Scraper (Every 5 Min)
+name: Exchange Filings Scraper
 
 on:
   schedule:
-    # ── Market hours: 9:00 AM – 6:00 PM IST = 3:30 AM – 12:30 PM UTC ──
-    # Runs every 5 minutes during NSE/BSE trading + post-market filings window
-    - cron: '*/5 3-12 * * 1-5'   # Mon–Fri, 3:00–12:59 UTC (covers 8:30 AM–6:29 PM IST)
-    # ── Evening run: catch late filings up to 9 PM IST ──
-    - cron: '*/15 13-15 * * 1-5'  # Every 15 min, 1:00–3:59 PM UTC (6:30–9:29 PM IST)
-    # ── Saturday: SME / delayed filings ──
-    - cron: '0 4,6,8 * * 6'       # 3 runs on Saturday
+    # Every 5 min during NSE/BSE trading + post-market window
+    # 3:30 AM – 12:30 PM UTC  =  9:00 AM – 6:00 PM IST  (Mon–Fri)
+    - cron: '*/5 3-12 * * 1-5'
+    # Evening window: catch late filings up to 9 PM IST
+    - cron: '*/15 13-15 * * 1-5'
+    # Saturday: 3 runs for SME / delayed filings
+    - cron: '0 4,6,8 * * 6'
+
   workflow_dispatch:
     inputs:
       force_full:
-        description: 'Force full re-scrape (ignore dedup state)'
+        description: 'Force full re-scrape (clears dedup state)'
         required: false
         default: 'false'
+        type: choice
+        options: ['false', 'true']
 
-# ── Prevent concurrent runs — only one scraper at a time ──────────────
+# Only one scraper run at a time — queue extras, never cancel
 concurrency:
   group: scraper-run
-  cancel-in-progress: false   # Queue, don't cancel — we want every run to complete
+  cancel-in-progress: false
 
 jobs:
   scrape-and-publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 15       # Kill if scraper hangs
+    timeout-minutes: 12
 
     permissions:
       contents: write
@@ -32,14 +35,14 @@ jobs:
       id-token: write
 
     steps:
-      # ── 1. Checkout (with full history for incremental state file) ──
+      # ── 1. Checkout ────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 1
 
-      # ── 2. Python setup ────────────────────────────────────────────
+      # ── 2. Python ──────────────────────────────────────────────────
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -47,11 +50,11 @@ jobs:
           cache: 'pip'
           cache-dependency-path: requirements.txt
 
-      # ── 3. Install dependencies ────────────────────────────────────
+      # ── 3. Dependencies ────────────────────────────────────────────
       - name: Install dependencies
-        run: pip install -r requirements.txt --quiet
+        run: pip install -r requirements.txt -q
 
-      # ── 4. Run scrapers ────────────────────────────────────────────
+      # ── 4. Scrape ──────────────────────────────────────────────────
       - name: Run Exchange Filings Scraper
         id: scraper
         run: |
@@ -62,71 +65,61 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           FORCE_FULL: ${{ github.event.inputs.force_full || 'false' }}
 
-      # ── 5. Check what changed ──────────────────────────────────────
-      - name: Check for new data
-        id: check_changes
+      # ── 5. Stage + detect changes ──────────────────────────────────
+      - name: Stage data files
+        id: stage
         run: |
-          git diff --name-only HEAD
-          CHANGED=$(git diff --name-only HEAD | grep -E "^(data/|docs/data\.json|scrapers/state\.json)" | wc -l)
-          echo "changed_files=$CHANGED" >> $GITHUB_OUTPUT
-          echo "Changed files: $CHANGED"
+          git add data/ docs/data.json || true
+          CHANGED=$(git diff --cached --name-only | wc -l)
+          echo "changed=$CHANGED" >> $GITHUB_OUTPUT
+          echo "Staged files changed: $CHANGED"
+          git diff --cached --name-only
 
-      # ── 6. Commit data files (only if something new) ───────────────
-      - name: Commit new filings data
-        if: steps.check_changes.outputs.changed_files > 0
+      # ── 6. Commit (only if something changed) ─────────────────────
+      - name: Commit new data
+        if: steps.stage.outputs.changed > 0
         run: |
           git config --local user.email "filings-bot@github-actions"
           git config --local user.name "Exchange Filings Bot"
-          git add data/ docs/data.json scrapers/state.json
-          git commit -m "📊 Filings update — $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')" || echo "Nothing to commit"
+          git commit -m "📊 Filings — $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ── 7. Deploy dashboard to GitHub Pages ───────────────────────
+      # ── 7. Deploy to GitHub Pages ──────────────────────────────────
       - name: Deploy to GitHub Pages
-        if: steps.check_changes.outputs.changed_files > 0
+        if: steps.stage.outputs.changed > 0
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
           publish_branch: gh-pages
           force_orphan: false
-          commit_message: "🌐 Dashboard — $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')"
           keep_files: true
+          commit_message: "🌐 Dashboard — $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')"
 
-      # ── 8. Optional Telegram alert ─────────────────────────────────
-      - name: Telegram alert (if secrets set)
-        if: steps.check_changes.outputs.changed_files > 0 && secrets.TELEGRAM_BOT_TOKEN != ''
-        run: |
-          COUNT=$(python -c "
-          import json, pathlib
-          try:
-              d = json.loads(pathlib.Path('docs/data.json').read_text())
-              s = d.get('stats', {})
-              print(f\"NSE: {s.get('nse_filings',0)}  BSE: {s.get('bse_filings',0)}  Opps: {s.get('opportunities_found',0)}\")
-          except: print('data updated')
-          ")
-#          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-#            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-#            -d parse_mode="HTML" \
-#            -d text="📊 <b>Exchange Filings Updated</b>%0A$(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')%0A$COUNT" || true
-
-      # ── 9. Summary ────────────────────────────────────────────────
+      # ── 8. Job summary ─────────────────────────────────────────────
       - name: Job summary
         if: always()
         run: |
-          echo "### Exchange Filings Run" >> $GITHUB_STEP_SUMMARY
+          echo "## Exchange Filings Run" >> $GITHUB_STEP_SUMMARY
           echo "**Time (IST):** $(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M')" >> $GITHUB_STEP_SUMMARY
-          echo "**New data:** ${{ steps.check_changes.outputs.changed_files }} files changed" >> $GITHUB_STEP_SUMMARY
+          echo "**Changed files:** ${{ steps.stage.outputs.changed }}" >> $GITHUB_STEP_SUMMARY
           if [ -f docs/data.json ]; then
-            python -c "
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            python3 -c "
           import json
-          d = json.load(open('docs/data.json'))
-          s = d.get('stats', {})
-          print(f\"| NSE Filings | {s.get('nse_filings', 0)} |\")
-          print(f\"| BSE Filings | {s.get('bse_filings', 0)} |\")
-          print(f\"| Opportunities | {s.get('opportunities_found', 0)} |\")
-          print(f\"| High Opps | {s.get('high_opportunity_count', 0)} |\")
+          try:
+              d = json.load(open('docs/data.json'))
+              s = d.get('stats', {})
+              print(f'| NSE Filings | {s.get(\"nse_filings\", 0)} |')
+              print(f'| BSE Filings | {s.get(\"bse_filings\", 0)} |')
+              print(f'| Opportunities | {s.get(\"opportunities_found\", 0)} |')
+              print(f'| High Opps | {s.get(\"high_opportunity_count\", 0)} |')
+              print(f'| Insights | {s.get(\"insights_generated\", 0)} |')
+          except Exception as e:
+              print(f'| Error | {e} |')
             " >> $GITHUB_STEP_SUMMARY || true
           fi
