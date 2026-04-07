@@ -107,10 +107,10 @@ jobs:
               print(f\"NSE: {s.get('nse_filings',0)}  BSE: {s.get('bse_filings',0)}  Opps: {s.get('opportunities_found',0)}\")
           except: print('data updated')
           ")
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d parse_mode="HTML" \
-            -d text="📊 <b>Exchange Filings Updated</b>%0A$(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')%0A$COUNT" || true
+#          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+#            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+#            -d parse_mode="HTML" \
+#            -d text="📊 <b>Exchange Filings Updated</b>%0A$(TZ='Asia/Kolkata' date +'%d %b %Y %H:%M IST')%0A$COUNT" || true
 
       # ── 9. Summary ────────────────────────────────────────────────
       - name: Job summary
