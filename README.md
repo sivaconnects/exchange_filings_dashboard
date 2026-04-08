@@ -103,7 +103,18 @@ python main.py
 ```
 
 Data will be saved to `data/json/`, `data/csv/`, and `docs/data.json`.
-Open `docs/index.html` in your browser to view the dashboard locally.
+
+### View the dashboard locally (important)
+Because the dashboard uses `fetch()` to load `docs/data.json`, most browsers will **block it** if you open `docs/index.html` directly via `file://`.
+
+Serve the `docs/` folder with a local web server instead:
+
+```bash
+cd docs
+python -m http.server 8000
+```
+
+Then open `http://localhost:8000` in your browser.
 
 ---
 
