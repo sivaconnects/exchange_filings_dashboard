@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>India Filings — NSE + BSE Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"/>
+<style>
+/* ═══════════════════════════════════════════════════════
+   CLAUDE-STYLE DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════ */
+:root {
+  /* Minimal black/white system */
+  --bg:        #ffffff;
+  --bg2:       #ffffff;
+  --bg3:       #f6f6f6;
+  --border:    rgba(0,0,0,0.08);
+  --border2:   rgba(0,0,0,0.14);
+  --text:      #111111;
+  --text2:     #222222;
+  --text3:     #666666;
+  --accent:    #111111;
+  --accent2:   #111111;
+  --green:     #111111;
+  --orange:    #111111;
+  --red:       #111111;
+  --blue:      #111111;
+  --purple:    #111111;
+  --teal:      #111111;
+  --nse:       #111111;
+  --bse:       #111111;
+  --radius:    10px;
+  --radius-sm: 6px;
+  --shadow:    0 2px 14px rgba(0,0,0,0.08);
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0 }
+html { scroll-behavior:smooth }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+a { color: var(--text); text-decoration: underline; text-decoration-color: rgba(0,0,0,0.25) }
+a:hover { text-decoration: underline }
+::-webkit-scrollbar { width: 5px; height: 5px }
+::-webkit-scrollbar-track { background: var(--bg) }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); border-radius: 3px }
+::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.28) }
+
+/* ── HEADER ── */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  height: 54px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.header-brand {
+  display: flex; align-items: center; gap: 10px;
+}
+.brand-icon {
+  width: 30px; height: 30px;
+  background: var(--text);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  color: #fff;
+}
+.brand-name { font-size: 14px; font-weight: 600; color: var(--text) }
+.brand-tag { font-size: 10px; color: var(--text3); letter-spacing: .3px }
+.header-meta {
+  display: flex; align-items: center; gap: 12px;
+}
+.live-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px; color: var(--text2);
+}
+.live-dot {
+  width: 6px; height: 6px; background: var(--text);
+  border-radius: 50%;
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+.update-time { font-size: 11px; color: var(--text3) }
+.btn-refresh {
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--text2); border-radius: var(--radius-sm);
+  padding: 5px 12px; font-size: 11px; cursor: pointer;
+  transition: all .15s;
+}
+.btn-refresh:hover { border-color: var(--text); color: var(--text) }
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+.stat-item {
+  padding: 14px 20px;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.stat-item:last-child { border-right: none }
+.stat-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.stat-item:hover::after { opacity: 1 }
+.stat-item:nth-child(1)::after { background: var(--accent) }
+.stat-item:nth-child(2)::after { background: var(--nse) }
+.stat-item:nth-child(3)::after { background: var(--bse) }
+.stat-item:nth-child(4)::after { background: var(--green) }
+.stat-item:nth-child(5)::after { background: var(--orange) }
+.stat-item:nth-child(6)::after { background: var(--purple) }
+.stat-num { font-size: 22px; font-weight: 700; line-height: 1; margin-bottom: 3px }
+.stat-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px }
+
+/* ── MAIN NAV ── */
+.main-nav {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  overflow-x: auto;
+  background: var(--bg2);
+}
+.nav-tab {
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 12px; font-weight: 500;
+  color: var(--text3);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all .15s;
+  display: flex; align-items: center; gap: 6px;
+  user-select: none;
+}
+.nav-tab:hover { color: var(--text2) }
+.nav-tab.on { color: var(--text); border-bottom-color: var(--accent) }
+.nav-count {
+  background: var(--bg3); border-radius: 20px;
+  padding: 1px 7px; font-size: 10px;
+  color: var(--text3); font-weight: 400;
+  transition: background .15s, color .15s;
+}
+.nav-tab.on .nav-count { background: rgba(201,100,66,.15); color: var(--accent) }
+.nav-tab.on .nav-count { background: rgba(0,0,0,.08); color: var(--text) }
+
+/* ── LAYOUT ── */
+.body-wrap { display: flex; min-height: calc(100vh - 130px) }
+.sidebar {
+  width: 210px; flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+.main-content { flex: 1; min-width: 0; overflow: hidden }
+
+/* ── SIDEBAR ── */
+.seg-switch {
+  display: flex; gap: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.seg-btn {
+  flex: 1; padding: 5px 6px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text3);
+  font-size: 11px; font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.seg-btn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm) }
+.seg-btn:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-left: none }
+.seg-btn.active { background: var(--accent); border-color: var(--accent); color: #fff }
+.sb-section { padding: 6px 0 }
+.sb-label {
+  font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .8px;
+  color: var(--text3);
+  padding: 6px 14px 3px;
+}
+.sb-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 14px;
+  cursor: pointer;
+  color: var(--text3); font-size: 12px;
+  border-left: 2px solid transparent;
+  transition: all .12s;
+}
+.sb-item:hover { color: var(--text2); background: rgba(255,255,255,.03) }
+.sb-item:hover { background: rgba(0,0,0,.03) }
+.sb-item.on { color: var(--text); border-left-color: var(--text); background: rgba(0,0,0,.04) }
+.sb-badge {
+  background: var(--bg3); border-radius: 20px;
+  padding: 1px 7px; font-size: 10px;
+  min-width: 22px; text-align: center;
+  color: var(--text3);
+}
+
+/* ── PANES ── */
+.pane { display: none }
+.pane.on { display: flex; flex-direction: column; height: 100% }
+
+/* ── SECTION HEADER ── */
+.sec-header {
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 10px;
+  background: var(--bg2);
+  flex-shrink: 0;
+}
+.sec-title { font-size: 14px; font-weight: 600 }
+.sec-sub { font-size: 11px; color: var(--text3); margin-top: 1px }
+.sec-filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+.search-box {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); color: var(--text);
+  padding: 5px 10px; font-size: 12px; font-family: inherit;
+  width: 180px; outline: none; transition: border-color .15s;
+}
+.search-box:focus { border-color: var(--accent) }
+.search-box::placeholder { color: var(--text3) }
+.filter-sel {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); color: var(--text2);
+  padding: 5px 8px; font-size: 11px; font-family: inherit;
+  outline: none; cursor: pointer;
+}
+
+/* ── SUB TABS ── */
+.sub-tabs {
+  display: flex; overflow-x: auto;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  flex-shrink: 0;
+}
+.sub-tab {
+  padding: 9px 14px;
+  cursor: pointer; font-size: 11px; font-weight: 500;
+  color: var(--text3); white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: all .15s;
+}
+.sub-tab:hover { color: var(--text2) }
+.sub-tab.on { color: var(--text); border-bottom-color: var(--accent) }
+
+/* ── TABLE ── */
+.tbl-wrap { overflow: auto; flex: 1 }
+table { width: 100%; border-collapse: collapse }
+thead th {
+  background: var(--bg2);
+  padding: 9px 14px;
+  text-align: left; white-space: nowrap;
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .5px;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1;
+}
+tbody tr {
+  border-bottom: 1px solid rgba(0,0,0,.06);
+  transition: background .1s;
+}
+tbody tr:hover { background: rgba(0,0,0,.02) }
+td { padding: 9px 14px; vertical-align: top; font-size: 12px }
+.t-sym { font-weight: 600; color: var(--accent2); white-space: nowrap }
+.t-company { color: var(--text); max-width: 180px; word-break: break-word }
+.t-subject { color: var(--text2); max-width: 280px; font-size: 11px; line-height: 1.5 }
+.t-date { color: var(--text3); font-size: 11px; white-space: nowrap }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-block;
+  border-radius: 4px; padding: 1px 7px;
+  font-size: 9px; font-weight: 700; letter-spacing: .3px;
+  white-space: nowrap; vertical-align: middle;
+}
+.b-nse, .b-bse, .b-eq, .b-sme, .b-bm, .b-fr, .b-ca, .b-ins, .b-agm {
+  background: rgba(0,0,0,.04);
+  color: var(--text2);
+  border: 1px solid rgba(0,0,0,.12);
+}
+
+/* ── ATTACHMENT LINK ── */
+.att-btn {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: rgba(0,0,0,.04); border: 1px solid rgba(0,0,0,.14);
+  border-radius: 4px; padding: 2px 8px;
+  font-size: 10px; color: var(--text);
+  transition: background .15s;
+  white-space: nowrap;
+}
+.att-btn:hover { background: rgba(0,0,0,.07); text-decoration: none }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 60px 20px; color: var(--text3);
+  text-align: center;
+}
+.empty-icon { font-size: 36px; margin-bottom: 12px; opacity: .5 }
+.empty-title { font-size: 14px; color: var(--text2); margin-bottom: 6px; font-weight: 500 }
+.empty-desc { font-size: 12px; max-width: 320px; line-height: 1.7 }
+
+/* ── OPPORTUNITIES ── */
+.opp-hero {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 1px; background: var(--border);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.opp-stat {
+  background: var(--bg2); padding: 16px;
+  text-align: center;
+}
+.opp-num { font-size: 26px; font-weight: 700; line-height: 1 }
+.opp-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; margin-top: 3px; letter-spacing: .4px }
+.opp-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px; padding: 16px 20px;
+  overflow-y: auto;
+}
+.opp-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px;
+  border-left: 3px solid var(--border2);
+  transition: border-color .2s;
+}
+.opp-card:hover { border-color: var(--accent) }
+.opp-card.hi, .opp-card.mo, .opp-card.wt, .opp-card.ca { border-left-color: var(--text) }
+.opp-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px }
+.opp-sym { font-size: 15px; font-weight: 700; color: var(--accent2) }
+.opp-co  { font-size: 11px; color: var(--text3); margin-top: 1px }
+.opp-score { font-size: 24px; font-weight: 800 }
+.sc-hi, .sc-mo, .sc-wt, .sc-ca { color: var(--text) }
+.opp-level { font-size: 11px; font-weight: 600; margin-bottom: 8px }
+.sig-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px }
+.sig-chip {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 2px 8px; font-size: 10px; color: var(--text3);
+}
+.opp-foot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap }
+
+/* ── IMPORTANT FILINGS ── */
+.imp-list { overflow-y: auto; flex: 1 }
+.imp-row {
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  display: grid; grid-template-columns: 100px 1fr auto;
+  gap: 12px; align-items: start;
+  transition: background .1s;
+}
+.imp-row:hover { background: rgba(255,255,255,.02) }
+.imp-sym { font-weight: 700; color: var(--accent2); font-size: 13px }
+.imp-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px }
+.imp-subj { font-size: 12px; color: var(--text); line-height: 1.5; margin-bottom: 3px }
+.imp-co   { font-size: 11px; color: var(--text3) }
+.imp-date { font-size: 10px; color: var(--text3); white-space: nowrap; text-align: right }
+.cat-dot  { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px }
+
+/* ── INSIGHTS ── */
+.ins-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 12px; padding: 16px 20px; overflow-y: auto;
+}
+.ins-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.ins-card-hdr {
+  padding: 11px 14px; display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; border-bottom: 1px solid var(--border);
+  user-select: none; transition: background .12s;
+}
+.ins-card-hdr:hover { background: var(--bg3) }
+.ins-card-title { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px }
+.ins-cnt {
+  background: var(--bg3); border-radius: 20px;
+  padding: 1px 8px; font-size: 10px; color: var(--text3);
+}
+.ins-body { display: none; max-height: 320px; overflow-y: auto }
+.ins-body.open { display: block }
+.ins-item {
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.ins-item:last-child { border-bottom: none }
+.ins-headline { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 3px }
+.ins-detail { font-size: 11px; color: var(--text2); line-height: 1.5 }
+.ins-foot { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; margin-top: 5px }
+.signal-tag {
+  border-radius: 4px; padding: 1px 6px;
+  font-size: 9px; font-weight: 700;
+}
+.s-pos, .s-neg, .s-neu {
+  background: rgba(0,0,0,.04);
+  color: var(--text2);
+  border: 1px solid rgba(0,0,0,.12);
+}
+.tag-chip {
+  background: var(--bg3); border-radius: 4px;
+  padding: 1px 5px; font-size: 9px; color: var(--text3);
+}
+
+/* ── PHILOSOPHY CARDS ── */
+.phi-wrap { padding: 16px 20px }
+.phi-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+.phi-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.phi-hdr {
+  padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.phi-avatar {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700; flex-shrink: 0;
+  background: var(--bg3);
+}
+.phi-name { font-size: 13px; font-weight: 700 }
+.phi-sub  { font-size: 10px; color: var(--text3); margin-top: 1px }
+.phi-body { padding: 10px 16px; max-height: 260px; overflow-y: auto }
+.phi-criteria { padding: 10px 16px; border-bottom: 1px solid var(--border) }
+.phi-crit-lbl {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--text3); margin-bottom: 6px;
+}
+.phi-crit-item { font-size: 11px; color: var(--text2); padding: 2px 0 }
+
+/* ── ABOUT ── */
+.about-wrap { padding: 20px; overflow-y: auto; max-height: calc(100vh - 200px) }
+.info-box {
+  background: rgba(0,0,0,.03); border: 1px solid rgba(0,0,0,.10);
+  border-radius: var(--radius); padding: 14px 18px;
+  font-size: 12px; line-height: 1.8; margin-bottom: 16px;
+}
+.info-box strong { color: var(--text) }
+.about-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.about-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+}
+.about-num { font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 6px }
+.about-title { font-size: 13px; font-weight: 600; margin-bottom: 4px }
+.about-desc { font-size: 11px; color: var(--text3); line-height: 1.7 }
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  .body-wrap { flex-direction: column }
+  .sidebar { width: 100%; max-height: 200px }
+  .stats-bar { grid-template-columns: repeat(3, 1fr) }
+  .opp-grid, .ins-grid { grid-template-columns: 1fr; padding: 10px }
+  .phi-grid { grid-template-columns: 1fr }
+  .imp-row { grid-template-columns: 1fr }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-brand">
+    <div class="brand-icon">📊</div>
+    <div>
+      <div class="brand-name">India Exchange Filings</div>
+      <div class="brand-tag">NSE · BSE · Live · Open Source · Free</div>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="live-pill"><span class="live-dot"></span> Live</div>
+    <span class="update-time" id="update-time">Loading...</span>
+    <button class="btn-refresh" onclick="loadData()">↻ Refresh</button>
+  </div>
+</header>
+
+<!-- ══ STATS BAR ═══════════════════════════════════════════════ -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-num" id="s-total" style="color:var(--accent)">–</div>
+    <div class="stat-lbl">Total Filings</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" id="s-nse" style="color:var(--nse)">–</div>
+    <div class="stat-lbl">NSE</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" id="s-bse" style="color:var(--bse)">–</div>
+    <div class="stat-lbl">BSE</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" id="s-high" style="color:var(--green)">–</div>
+    <div class="stat-lbl">🔥 High Opp</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" id="s-mod" style="color:var(--orange)">–</div>
+    <div class="stat-lbl">✅ Moderate</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" id="s-ins" style="color:var(--purple)">–</div>
+    <div class="stat-lbl">💡 Insights</div>
+  </div>
+</div>
+
+<!-- ══ MAIN NAV ════════════════════════════════════════════════ -->
+<nav class="main-nav">
+  <div class="nav-tab on" onclick="setMain('nse')">
+    NSE <span class="nav-count" id="nc-nse">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('bse')">
+    BSE <span class="nav-count" id="nc-bse">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('combined')">
+    Combined <span class="nav-count" id="nc-comb">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('important')">
+    ⭐ Important <span class="nav-count" id="nc-imp">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('opportunities')">
+    🎯 Opportunities <span class="nav-count" id="nc-opp">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('insights')">
+    💡 Insights <span class="nav-count" id="nc-ins">0</span>
+  </div>
+  <div class="nav-tab" onclick="setMain('about')">About</div>
+</nav>
+
+<!-- ══ BODY ════════════════════════════════════════════════════ -->
+<div class="body-wrap">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="seg-switch">
+      <button class="seg-btn active" id="btn-eq" onclick="setSeg('equity')">EQUITY</button>
+      <button class="seg-btn" id="btn-sme" onclick="setSeg('sme')">SME</button>
+    </div>
+    <div id="sidebar-cats"></div>
+  </aside>
+
+  <!-- CONTENT -->
+  <div class="main-content">
+
+    <!-- NSE -->
+    <div class="pane on" id="pane-nse">
+      <div class="sec-header">
+        <div>
+          <div class="sec-title" id="nse-cat-title">📢 Corporate Announcements</div>
+          <div class="sec-sub">NSE filings · XBRL parsed · PDF links</div>
+        </div>
+        <div class="sec-filters">
+          <input class="search-box" id="nse-q" placeholder="Symbol / company…" oninput="renderNSE()"/>
+          <select class="filter-sel" id="nse-seg-f" onchange="renderNSE()">
+            <option value="">All segments</option>
+            <option value="EQUITY">Equity</option>
+            <option value="SME">SME</option>
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap" id="nse-tbl"></div>
+    </div>
+
+    <!-- BSE -->
+    <div class="pane" id="pane-bse">
+      <div class="sec-header">
+        <div>
+          <div class="sec-title" id="bse-cat-title">📋 All Announcements</div>
+          <div class="sec-sub">BSE filings · All 9 categories</div>
+        </div>
+        <div class="sec-filters">
+          <input class="search-box" id="bse-q" placeholder="Symbol / company…" oninput="renderBSE()"/>
+          <select class="filter-sel" id="bse-seg-f" onchange="renderBSE()">
+            <option value="">All segments</option>
+            <option value="EQUITY">Equity</option>
+            <option value="SME">SME</option>
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap" id="bse-tbl"></div>
+    </div>
+
+    <!-- COMBINED -->
+    <div class="pane" id="pane-combined">
+      <div class="sec-header">
+        <div>
+          <div class="sec-title">🔗 NSE + BSE Combined</div>
+          <div class="sec-sub">All filings from both exchanges</div>
+        </div>
+        <div class="sec-filters">
+          <input class="search-box" id="comb-q" placeholder="Symbol / company…" oninput="renderCombined()"/>
+          <select class="filter-sel" id="comb-exc" onchange="renderCombined()">
+            <option value="">NSE + BSE</option>
+            <option value="NSE">NSE only</option>
+            <option value="BSE">BSE only</option>
+          </select>
+        </div>
+      </div>
+      <div class="tbl-wrap" id="comb-tbl"></div>
+    </div>
+
+    <!-- IMPORTANT -->
+    <div class="pane" id="pane-important">
+      <div class="sec-header">
+        <div>
+          <div class="sec-title">⭐ Important Filings</div>
+          <div class="sec-sub">Board Meetings · Results · Actions · Insider Trading</div>
+        </div>
+        <input class="search-box" id="imp-q" placeholder="Search…" oninput="renderImportant()"/>
+      </div>
+      <div class="sub-tabs" id="imp-sub">
+        <div class="sub-tab on" onclick="setImpCat('all')">All</div>
+        <div class="sub-tab" onclick="setImpCat('Board Meeting')">🏛 Board Meetings</div>
+        <div class="sub-tab" onclick="setImpCat('Financial Result')">📈 Results</div>
+        <div class="sub-tab" onclick="setImpCat('Corporate Action')">⚡ Actions</div>
+        <div class="sub-tab" onclick="setImpCat('Insider Trading / SAST')">🔍 Insider</div>
+      </div>
+      <div class="imp-list" id="imp-list"></div>
+    </div>
+
+    <!-- OPPORTUNITIES -->
+    <div class="pane" id="pane-opportunities">
+      <div class="sec-header">
+        <div>
+          <div class="sec-title">🎯 Opportunity Radar</div>
+          <div class="sec-sub">Scored signals — pre-discovery alerts</div>
+        </div>
+        <input class="search-box" id="opp-q" placeholder="Search…" oninput="renderOpps()"/>
+      </div>
+      <div class="opp-hero" id="opp-hero"></div>
+      <div class="sub-tabs">
+        <div class="sub-tab on" onclick="setOppFilter('all')">All</div>
+        <div class="sub-tab" onclick="setOppFilter('high')">🔥 High ≥8</div>
+        <div class="sub-tab" onclick="setOppFilter('moderate')">✅ Moderate 5–7</div>
+        <div class="sub-tab" onclick="setOppFilter('watch')">👀 Watch 3–4</div>
+        <div class="sub-tab" onclick="setOppFilter('caution')">⚠️ Caution</div>
+      </div>
+      <div class="opp-grid" id="opp-grid"></div>
+    </div>
+
+    <!-- INSIGHTS -->
+    <div class="pane" id="pane-insights">
+      <div class="sec-header">
+        <div>
+          <div class="sec-title">💡 AI Investment Insights</div>
+          <div class="sec-sub">LLM analysis · 24 categories · Buffett / Lynch / Bogle</div>
+        </div>
+      </div>
+      <div class="sub-tabs" id="ins-sub">
+        <div class="sub-tab on" onclick="setInsView('all')">All</div>
+        <div class="sub-tab" onclick="setInsView('results')">📈 Results</div>
+        <div class="sub-tab" onclick="setInsView('growth')">🚀 Growth</div>
+        <div class="sub-tab" onclick="setInsView('corporate')">🏢 Corporate</div>
+        <div class="sub-tab" onclick="setInsView('risk')">⚠️ Risk</div>
+        <div class="sub-tab" onclick="setInsView('philosophy')">🧠 Philosophy</div>
+      </div>
+      <div id="ins-content" style="overflow-y:auto;flex:1"></div>
+    </div>
+
+    <!-- ABOUT -->
+    <div class="pane" id="pane-about">
+      <div class="sec-header">
+        <div class="sec-title">About This Project</div>
+      </div>
+      <div class="about-wrap">
+        <div class="info-box">
+          <strong>100% Free. No subscription. No login required.</strong><br/>
+          This open-source dashboard uses a <strong>real headless browser (Playwright)</strong> to physically visit NSE and BSE websites every 5 minutes — just like a human user — extracting every filing as it appears. Data is stored as JSON and served via GitHub Pages at zero cost.
+        </div>
+        <div class="about-grid">
+          <div class="about-card">
+            <div class="about-num" style="color:var(--accent)">01</div>
+            <div class="about-title">Real Browser Scraping</div>
+            <div class="about-desc">Uses Playwright Chromium to open NSE and BSE website pages. JavaScript runs, cookies are set, exactly like a human. Data is extracted from what the browser receives.</div>
+          </div>
+          <div class="about-card">
+            <div class="about-num" style="color:var(--nse)">02</div>
+            <div class="about-title">XBRL File Parsing</div>
+            <div class="about-desc">NSE attaches XBRL/XML files to each announcement. We fetch and parse them to extract the real PDF attachment URL, full description, and filing metadata.</div>
+          </div>
+          <div class="about-card">
+            <div class="about-num" style="color:var(--bse)">03</div>
+            <div class="about-title">All BSE Categories</div>
+            <div class="about-desc">AGM/EGM, Board Meetings, Company Updates, Corporate Actions, Insider/SAST, New Listings, Results, Integrated Filings, Others — all 9 BSE categories covered.</div>
+          </div>
+          <div class="about-card">
+            <div class="about-num" style="color:var(--purple)">04</div>
+            <div class="about-title">AI Insight Engine</div>
+            <div class="about-desc">When ANTHROPIC_API_KEY is set in GitHub Secrets, Claude analyses all filings across 24 investment categories with Buffett, Lynch and Bogle frameworks.</div>
+          </div>
+          <div class="about-card">
+            <div class="about-num" style="color:var(--green)">05</div>
+            <div class="about-title">5-Minute Live Updates</div>
+            <div class="about-desc">GitHub Actions runs every 5 minutes during market hours (9 AM–6 PM IST, Mon–Fri). Deduplication ensures only NEW filings are processed each run.</div>
+          </div>
+          <div class="about-card">
+            <div class="about-num" style="color:var(--orange)">06</div>
+            <div class="about-title">Setup: 3 Steps</div>
+            <div class="about-desc">1. Fork on GitHub. 2. Enable Pages (gh-pages branch). 3. Enable Actions. Live at <code style="color:var(--accent2)">username.github.io/exchange_filings_dashboard</code></div>
+          </div>
+        </div>
+        <div class="info-box" style="margin-top:16px">
+          <strong>⚠️ Disclaimer:</strong> For informational purposes only. Not financial advice. Always do your own due diligence.
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+</div><!-- /body-wrap -->
+
+<script>
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+const G = {
+  data: null,
+  main: 'nse',
+  seg: 'equity',
+  nseCat: 'corporate_announcements',
+  bseCat: 'corporate_announcements',
+  combCat: 'corporate_announcements',
+  impCat: 'all',
+  oppFilter: 'all',
+  insView: 'all',
+};
+
+const NSE_CATS = [
+  { key: 'corporate_announcements', label: '📢 Announcements' },
+  { key: 'board_meetings',          label: '🏛 Board Meetings' },
+  { key: 'financial_results',       label: '📈 Results' },
+  { key: 'corporate_actions',       label: '⚡ Actions' },
+  { key: 'shareholding_patterns',   label: '🏦 Shareholding' },
+];
+
+const BSE_CATS = [
+  { key: 'corporate_announcements', label: '📢 All Announcements' },
+  { key: 'board_meetings',          label: '🏛 Board Meetings' },
+  { key: 'agm_egm',                 label: '🏢 AGM / EGM' },
+  { key: 'results',                 label: '📈 Results' },
+  { key: 'corporate_actions',       label: '⚡ Actions' },
+  { key: 'insider_trading',         label: '🔍 Insider / SAST' },
+  { key: 'company_updates',         label: '📰 Company Updates' },
+  { key: 'new_listings',            label: '🆕 New Listings' },
+  { key: 'integrated_filings',      label: '📋 Integrated' },
+  { key: 'shareholding_patterns',   label: '🏦 Shareholding' },
+  { key: 'others',                  label: '📁 Others' },
+];
+
+const INS_CATS = {
+  results:   ['great_results_latest','great_results_prev','great_results_prev2','revenue_guidance'],
+  growth:    ['growth_triggers','order_book','large_orders','capacity_expansions','new_products','employee_hiring','patient_registrations'],
+  corporate: ['preferential_issues','jv_partnerships','promoter_buying','bulk_deals','analyst_meets','asset_expansion','open_offers'],
+  risk:      ['red_flags','cyclical','credit_ratings','stocks_correction','fii_dii'],
+  philosophy:['buffett_picks','lynch_picks','bogle_picks'],
+};
+
+const INS_META = {
+  great_results_latest: { icon:'🏆', label:'Great Results — Latest Q',   color:'var(--green)' },
+  great_results_prev:   { icon:'📊', label:'Great Results — Prev Q',     color:'var(--teal)' },
+  great_results_prev2:  { icon:'📉', label:'Great Results — Q-2',        color:'var(--blue)' },
+  revenue_guidance:     { icon:'🎯', label:'Revenue Guidance vs Actual', color:'var(--blue)' },
+  growth_triggers:      { icon:'🚀', label:'Growth Triggers',            color:'var(--accent2)' },
+  order_book:           { icon:'📦', label:'Order Book',                 color:'var(--accent2)' },
+  large_orders:         { icon:'📋', label:'Large Order Receipts',       color:'var(--green)' },
+  capacity_expansions:  { icon:'🏗', label:'Capacity Expansions',        color:'var(--accent2)' },
+  new_products:         { icon:'🔬', label:'New Product Launches',       color:'var(--teal)' },
+  employee_hiring:      { icon:'👥', label:'Employee Hiring',            color:'var(--blue)' },
+  patient_registrations:{ icon:'🏥', label:'Patient Registrations',      color:'var(--teal)' },
+  preferential_issues:  { icon:'💰', label:'Preferential Issues / QIP',  color:'var(--orange)' },
+  jv_partnerships:      { icon:'🤝', label:'JV / Partnerships / M&A',   color:'var(--purple)' },
+  promoter_buying:      { icon:'👔', label:'Promoter Buying',            color:'var(--green)' },
+  bulk_deals:           { icon:'📈', label:'Bulk / Block Deals',         color:'var(--orange)' },
+  analyst_meets:        { icon:'🎙', label:'Analyst Meets',              color:'var(--accent2)' },
+  asset_expansion:      { icon:'🏢', label:'Asset Base Expansion',       color:'var(--accent2)' },
+  open_offers:          { icon:'📣', label:'Open Offers',                color:'var(--orange)' },
+  red_flags:            { icon:'🚨', label:'Red Flags',                  color:'var(--red)' },
+  cyclical:             { icon:'🔄', label:'Cyclical Companies',         color:'var(--orange)' },
+  credit_ratings:       { icon:'⭐', label:'Credit Rating Updates',      color:'var(--orange)' },
+  stocks_correction:    { icon:'📉', label:'Stocks >10% Correction',     color:'var(--red)' },
+  fii_dii:              { icon:'🏦', label:'FII / DII Activity',        color:'var(--purple)' },
+  buffett_picks:        { icon:'🧠', label:'Warren Buffett Picks',       color:'#d4a054' },
+  lynch_picks:          { icon:'📚', label:'Peter Lynch Picks',          color:'var(--green)' },
+  bogle_picks:          { icon:'📊', label:'John Bogle Picks',           color:'var(--blue)' },
+};
+
+// ════════════════════════════════════════════════════════
+//  DATA LOADING
+// ════════════════════════════════════════════════════════
+async function loadData() {
+  $('update-time').textContent = 'Refreshing…';
+  try {
+    // Note: opening this file via file:// will block fetch() in most browsers.
+    const isFile = window.location.protocol === 'file:';
+    const url = new URL('data.json', window.location.href);
+    url.searchParams.set('_', String(Date.now()));
+
+    const r = await fetch(url.toString(), { cache: 'no-store' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    G.data = await r.json();
+  } catch(e) {
+    G.data = emptyData();
+    $('update-time').textContent =
+      window.location.protocol === 'file:'
+        ? '⚠️ Can’t load data.json via file:// — serve docs/ with a local web server'
+        : '⚠️ No data — run GitHub Actions first';
+  }
+  render();
+}
+
+function emptyData() {
+  const seg = () => ({
+    corporate_announcements:[], board_meetings:[], financial_results:[],
+    corporate_actions:[], shareholding_patterns:[], agm_egm:[], results:[],
+    insider_trading:[], company_updates:[], new_listings:[],
+    integrated_filings:[], others:[]
+  });
+  return {
+    last_updated: new Date().toISOString(),
+    nse:{ equity:seg(), sme:seg() },
+    bse:{ equity:seg(), sme:seg() },
+    combined:{ equity:seg(), sme:seg() },
+    important_filings:[],
+    opportunities:{ total_opportunities:0, high_opportunity:[], moderate_opportunity:[], watch_list:[], caution_list:[], top_10:[] },
+    insights:{},
+    stats:{ total_filings:0, nse_filings:0, bse_filings:0, opportunities_found:0, high_opportunity_count:0, insights_generated:0 }
+  };
+}
+
+// ════════════════════════════════════════════════════════
+//  RENDER ALL
+// ════════════════════════════════════════════════════════
+function render() {
+  const d = G.data; if (!d) return;
+  const st = d.stats || {};
+
+  // Stats
+  $('s-total').textContent = st.total_filings || 0;
+  $('s-nse').textContent   = st.nse_filings   || 0;
+  $('s-bse').textContent   = st.bse_filings   || 0;
+  $('s-high').textContent  = st.high_opportunity_count || 0;
+  $('s-mod').textContent   = (d.opportunities?.moderate_opportunity||[]).length;
+  $('s-ins').textContent   = st.insights_generated || 0;
+
+  // Time
+  if (d.last_updated) {
+    try {
+      const dt = new Date(d.last_updated).toLocaleString('en-IN',{
+        timeZone:'Asia/Kolkata', day:'2-digit', month:'short',
+        hour:'2-digit', minute:'2-digit', hour12:true
+      });
+      $('update-time').textContent = `${dt} IST`;
+    } catch { $('update-time').textContent = d.last_updated.slice(0,16) }
+  }
+
+  // Nav counts
+  $('nc-nse').textContent  = st.nse_filings  || 0;
+  $('nc-bse').textContent  = st.bse_filings  || 0;
+  const combN = cntSrc(d.combined);
+  $('nc-comb').textContent = combN;
+  $('nc-imp').textContent  = (d.important_filings||[]).length;
+  $('nc-opp').textContent  = st.opportunities_found || 0;
+  $('nc-ins').textContent  = st.insights_generated  || 0;
+
+  buildSidebar();
+  renderNSE();
+  renderBSE();
+  renderCombined();
+  renderImportant();
+  renderOpps();
+  renderInsights();
+}
+
+function cntSrc(src) {
+  let n = 0;
+  for (const seg of ['equity','sme'])
+    for (const v of Object.values(src?.[seg]||{}))
+      if (Array.isArray(v)) n += v.length;
+  return n;
+}
+
+// ════════════════════════════════════════════════════════
+//  SIDEBAR
+// ════════════════════════════════════════════════════════
+function buildSidebar() {
+  const d = G.data; if (!d) return;
+  const isBSE  = G.main === 'bse';
+  const isComb = G.main === 'combined';
+  const cats   = isBSE ? BSE_CATS : NSE_CATS;
+  const activeCat = isBSE ? G.bseCat : isComb ? G.combCat : G.nseCat;
+  const src = isBSE ? d.bse : isComb ? d.combined : d.nse;
+
+  let html = '<div class="sb-section"><div class="sb-label">Categories</div>';
+  cats.forEach(c => {
+    const cnt = (src?.[G.seg]?.[c.key]||[]).length;
+    const on  = activeCat === c.key;
+    html += `<div class="sb-item${on?' on':''}" onclick="setCat('${c.key}')">
+      ${c.label}<span class="sb-badge">${cnt}</span>
+    </div>`;
+  });
+  html += '</div>';
+  $('sidebar-cats').innerHTML = html;
+}
+
+function setSeg(seg) {
+  G.seg = seg;
+  $('btn-eq').classList.toggle('active', seg === 'equity');
+  $('btn-sme').classList.toggle('active', seg === 'sme');
+  buildSidebar();
+  if (G.main === 'nse')      renderNSE();
+  else if (G.main === 'bse') renderBSE();
+  else if (G.main === 'combined') renderCombined();
+}
+
+function setCat(cat) {
+  if (G.main === 'bse')      G.bseCat  = cat;
+  else if (G.main === 'combined') G.combCat = cat;
+  else                       G.nseCat  = cat;
+  buildSidebar();
+  if (G.main === 'nse')      renderNSE();
+  else if (G.main === 'bse') renderBSE();
+  else                       renderCombined();
+}
+
+// ════════════════════════════════════════════════════════
+//  TABLE RENDERING
+// ════════════════════════════════════════════════════════
+function getRows(src, catKey, seg, excFilter) {
+  let rows = [];
+  if (seg) {
+    rows = [...(src?.[seg]?.[catKey]||[])];
+  } else {
+    for (const s of ['equity','sme'])
+      rows.push(...(src?.[s]?.[catKey]||[]));
+  }
+  if (excFilter) rows = rows.filter(r => r.exchange === excFilter);
+  return rows;
+}
+
+function filterRows(rows, q, segF) {
+  if (q) {
+    const ql = q.toLowerCase();
+    rows = rows.filter(r =>
+      (r.symbol||'').toLowerCase().includes(ql) ||
+      (r.company||'').toLowerCase().includes(ql) ||
+      (r.subject||'').toLowerCase().includes(ql)
+    );
+  }
+  if (segF) rows = rows.filter(r => r.segment === segF);
+  return rows;
+}
+
+function renderTable(container, rows, catKey) {
+  if (!rows.length) {
+    container.innerHTML = empty('📭', 'No filings', 'No data yet. Run the GitHub Action to scrape NSE & BSE.');
+    return;
+  }
+
+  const isBM = catKey.includes('board');
+  const isFR = catKey.includes('result') || catKey.includes('financial');
+  const isCA = catKey.includes('action');
+  const isSH = catKey.includes('shareholding');
+  const isIT = catKey.includes('insider');
+
+  let thExtra = '', tdFn;
+  if (isBM) {
+    thExtra = '<th>Meeting Date</th><th>Filing Date</th>';
+    tdFn = r => `<td class="t-date">${fmt(r.meeting_date)}</td><td class="t-date">${fmt(r.filing_date)}</td>`;
+  } else if (isFR) {
+    thExtra = '<th>Period</th><th>Type</th><th>Filing Date</th>';
+    tdFn = r => `<td>${esc(r.period||'–')}</td><td>${esc(r.result_type||'Quarterly')}</td><td class="t-date">${fmt(r.filing_date)}</td>`;
+  } else if (isCA) {
+    thExtra = '<th>Action</th><th>Ex-Date</th><th>Rec Date</th>';
+    tdFn = r => `<td class="t-subject">${esc(r.action||r.subject||'–')}</td><td class="t-date">${fmt(r.ex_date)}</td><td class="t-date">${fmt(r.record_date)}</td>`;
+  } else if (isSH) {
+    thExtra = '<th>Period</th><th>Promoter%</th><th>FII%</th><th>Filing Date</th>';
+    tdFn = r => `<td>${esc(r.period||'–')}</td><td>${esc(String(r.promoter_holding||'–'))}</td><td>${esc(String(r.fii_holding||'–'))}</td><td class="t-date">${fmt(r.filing_date)}</td>`;
+  } else if (isIT) {
+    thExtra = '<th>Subcategory</th><th>Filing Date</th>';
+    tdFn = r => `<td><span class="badge b-ins">${esc(r.subcategory||'Insider')}</span></td><td class="t-date">${fmt(r.filing_date)}</td>`;
+  } else {
+    thExtra = '<th>Subject</th><th>Filing Date</th>';
+    tdFn = r => `<td class="t-subject">${esc((r.subject||'–').slice(0,130))}</td><td class="t-date">${fmt(r.filing_date)}</td>`;
+  }
+
+  const tbody = rows.slice(0,500).map(r => {
+    const excBadge = r.exchange === 'NSE'
+      ? `<span class="badge b-nse">NSE</span>`
+      : `<span class="badge b-bse">BSE</span>`;
+    const segBadge = r.segment === 'SME'
+      ? `<span class="badge b-sme">SME</span>`
+      : `<span class="badge b-eq">EQ</span>`;
+    const att = r.attachment_url
+      ? `<a class="att-btn" href="${esc(r.attachment_url)}" target="_blank" rel="noopener">📄 PDF</a>`
+      : `<span style="color:var(--text3);font-size:10px">–</span>`;
+
+    return `<tr>
+      <td>${excBadge} ${segBadge}</td>
+      <td class="t-sym">${esc(r.symbol||'–')}</td>
+      <td class="t-company">${esc((r.company||'–').slice(0,38))}</td>
+      ${tdFn(r)}
+      <td>${att}</td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML = `<table>
+    <thead><tr>
+      <th>Exch</th><th>Symbol</th><th>Company</th>${thExtra}<th>Attach</th>
+    </tr></thead>
+    <tbody>${tbody}</tbody>
+  </table>`;
+}
+
+function renderNSE() {
+  const d = G.data; if (!d) return;
+  const meta = NSE_CATS.find(c => c.key === G.nseCat) || NSE_CATS[0];
+  $('nse-cat-title').textContent = meta.label;
+  const rows0 = getRows(d.nse, G.nseCat, G.seg, '');
+  const rows  = filterRows(rows0, $('nse-q').value, $('nse-seg-f').value);
+  renderTable($('nse-tbl'), rows, G.nseCat);
+}
+
+function renderBSE() {
+  const d = G.data; if (!d) return;
+  const meta = BSE_CATS.find(c => c.key === G.bseCat) || BSE_CATS[0];
+  $('bse-cat-title').textContent = meta.label;
+  const rows0 = getRows(d.bse, G.bseCat, G.seg, '');
+  const rows  = filterRows(rows0, $('bse-q').value, $('bse-seg-f').value);
+  renderTable($('bse-tbl'), rows, G.bseCat);
+}
+
+function renderCombined() {
+  const d = G.data; if (!d) return;
+  const rows0 = getRows(d.combined, G.combCat, G.seg, $('comb-exc').value);
+  const rows  = filterRows(rows0, $('comb-q').value, '');
+  renderTable($('comb-tbl'), rows, G.combCat);
+}
+
+// ════════════════════════════════════════════════════════
+//  IMPORTANT FILINGS
+// ════════════════════════════════════════════════════════
+function setImpCat(c) {
+  G.impCat = c;
+  $$('#imp-sub .sub-tab').forEach((el,i) =>
+    el.classList.toggle('on', ['all','Board Meeting','Financial Result','Corporate Action','Insider Trading / SAST'][i] === c));
+  renderImportant();
+}
+
+function renderImportant() {
+  const d = G.data; if (!d) return;
+  let rows = d.important_filings || [];
+  if (G.impCat !== 'all') rows = rows.filter(r => r.category === G.impCat);
+  const q = $('imp-q').value.toLowerCase();
+  if (q) rows = rows.filter(r =>
+    (r.symbol||'').toLowerCase().includes(q) || (r.company||'').toLowerCase().includes(q));
+
+  const el = $('imp-list');
+  if (!rows.length) {
+    el.innerHTML = empty('⭐','No important filings','Board meetings, results and corporate actions appear here.');
+    return;
+  }
+
+  const dotColor = { 'Board Meeting':'var(--orange)', 'Financial Result':'var(--green)',
+    'Corporate Action':'var(--purple)', 'Insider Trading / SAST':'var(--red)' };
+
+  el.innerHTML = rows.slice(0,200).map(r => {
+    const exc = r.exchange === 'NSE' ? '<span class="badge b-nse">NSE</span>' : '<span class="badge b-bse">BSE</span>';
+    const seg = r.segment === 'SME' ? '<span class="badge b-sme">SME</span>' : '<span class="badge b-eq">EQ</span>';
+    const dc  = dotColor[r.category] || 'var(--text3)';
+    const att = r.attachment_url
+      ? `<a class="att-btn" href="${esc(r.attachment_url)}" target="_blank">📄 PDF</a>` : '';
+    return `<div class="imp-row">
+      <div>
+        <div class="imp-sym">${esc(r.symbol||'–')}</div>
+        <div class="imp-badges">${exc}${seg}</div>
+      </div>
+      <div>
+        <div class="imp-subj">
+          <span class="cat-dot" style="background:${dc}"></span>
+          <strong>${esc(r.category||'')}</strong> — ${esc((r.subject||r.action||r.purpose||'').slice(0,120))}
+        </div>
+        <div class="imp-co">${esc(r.company||'')}</div>
+        ${att ? `<div style="margin-top:4px">${att}</div>` : ''}
+      </div>
+      <div class="imp-date">${fmt(r.filing_date||r.meeting_date||r.ex_date)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  OPPORTUNITIES
+// ════════════════════════════════════════════════════════
+function setOppFilter(f) {
+  G.oppFilter = f;
+  $$('#pane-opportunities .sub-tab').forEach((el,i) =>
+    el.classList.toggle('on', ['all','high','moderate','watch','caution'][i] === f));
+  renderOpps();
+}
+
+function renderOpps() {
+  const d = G.data; if (!d) return;
+  const o = d.opportunities || {};
+
+  $('opp-hero').innerHTML = `
+    <div class="opp-stat"><div class="opp-num" style="color:var(--green)">${(o.high_opportunity||[]).length}</div><div class="opp-lbl">🔥 High</div></div>
+    <div class="opp-stat"><div class="opp-num" style="color:var(--orange)">${(o.moderate_opportunity||[]).length}</div><div class="opp-lbl">✅ Moderate</div></div>
+    <div class="opp-stat"><div class="opp-num" style="color:var(--blue)">${(o.watch_list||[]).length}</div><div class="opp-lbl">👀 Watch</div></div>
+    <div class="opp-stat"><div class="opp-num" style="color:var(--red)">${(o.caution_list||[]).length}</div><div class="opp-lbl">⚠️ Caution</div></div>
+    <div class="opp-stat"><div class="opp-num">${o.total_opportunities||0}</div><div class="opp-lbl">Total</div></div>`;
+
+  let rows = (G.oppFilter === 'all' ? (o.top_10||[])
+    : G.oppFilter === 'high'     ? (o.high_opportunity||[])
+    : G.oppFilter === 'moderate' ? (o.moderate_opportunity||[])
+    : G.oppFilter === 'watch'    ? (o.watch_list||[])
+    : (o.caution_list||[]));
+
+  const q = $('opp-q').value.toLowerCase();
+  if (q) rows = rows.filter(r => (r.symbol||'').toLowerCase().includes(q) || (r.company||'').toLowerCase().includes(q));
+
+  const grid = $('opp-grid');
+  if (!rows.length) { grid.innerHTML = `<div style="grid-column:1/-1">${empty('🔍','No signals found','Opportunities appear once the scraper runs and analyses filings.')}</div>`; return; }
+
+  grid.innerHTML = rows.map(r => {
+    const sc  = r.opportunity_score || 0;
+    const cls = sc >= 8 ? 'hi' : sc >= 5 ? 'mo' : sc < 0 ? 'ca' : 'wt';
+    const scCls = sc >= 8 ? 'sc-hi' : sc >= 5 ? 'sc-mo' : sc < 0 ? 'sc-ca' : 'sc-wt';
+    const exc = r.exchange === 'NSE' ? '<span class="badge b-nse">NSE</span>' : '<span class="badge b-bse">BSE</span>';
+    const seg = r.segment === 'SME' ? '<span class="badge b-sme">SME</span>' : '<span class="badge b-eq">EQ</span>';
+    return `<div class="opp-card ${cls}">
+      <div class="opp-top">
+        <div>
+          <div class="opp-sym">${esc(r.symbol||'–')}</div>
+          <div class="opp-co">${esc((r.company||'').slice(0,30))}</div>
+        </div>
+        <div class="opp-score ${scCls}">${sc}</div>
+      </div>
+      <div class="opp-level">${esc(r.opportunity_level||'')}</div>
+      <div class="sig-list">${(r.opportunity_signals||[]).slice(0,4).map(s=>`<span class="sig-chip">${esc(s)}</span>`).join('')}</div>
+      <div class="opp-foot">
+        ${exc}${seg}
+        ${r.attachment_url ? `<a class="att-btn" href="${esc(r.attachment_url)}" target="_blank">📄</a>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  INSIGHTS
+// ════════════════════════════════════════════════════════
+function setInsView(v) {
+  G.insView = v;
+  $$('#ins-sub .sub-tab').forEach((el,i) =>
+    el.classList.toggle('on', ['all','results','growth','corporate','risk','philosophy'][i] === v));
+  renderInsights();
+}
+
+function renderInsights() {
+  const d = G.data; if (!d) return;
+  const ins = d.insights || {};
+  const cont = $('ins-content');
+
+  if (G.insView === 'philosophy') {
+    renderPhilosophy(cont, ins);
+    return;
+  }
+
+  const catKeys = G.insView === 'all'
+    ? Object.keys(INS_META).filter(k => !['buffett_picks','lynch_picks','bogle_picks'].includes(k))
+    : (INS_CATS[G.insView] || []);
+
+  let html = '<div class="ins-grid">';
+  catKeys.forEach(key => {
+    const m     = INS_META[key] || { icon:'💡', label:key, color:'var(--text2)' };
+    const items = ins[key] || [];
+    html += `<div class="ins-card">
+      <div class="ins-card-hdr" onclick="toggleIns('ib-${key}')">
+        <div class="ins-card-title" style="color:${m.color}">${m.icon} ${m.label}</div>
+        <span class="ins-cnt">${items.length}</span>
+      </div>
+      <div class="ins-body" id="ib-${key}">
+        ${!items.length
+          ? `<div style="padding:14px;color:var(--text3);font-size:11px;text-align:center">No data today</div>`
+          : items.slice(0,20).map(it => `<div class="ins-item">
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:3px">
+                <strong style="color:var(--accent2);font-size:12px">${esc(it.symbol||'–')}</strong>
+                ${it.exchange==='NSE'?'<span class="badge b-nse">NSE</span>':'<span class="badge b-bse">BSE</span>'}
+                <span class="signal-tag ${sigCls(it.signal)}">${esc(it.signal||'')}</span>
+              </div>
+              <div class="ins-headline">${esc(it.headline||'')}</div>
+              <div class="ins-detail">${esc((it.detail||'').slice(0,200))}</div>
+              <div class="ins-foot">
+                ${(it.tags||[]).slice(0,3).map(t=>`<span class="tag-chip">${esc(t)}</span>`).join('')}
+                ${it.attachment_url?`<a class="att-btn" href="${esc(it.attachment_url)}" target="_blank">📄 PDF</a>`:''}
+              </div>
+            </div>`).join('')}
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  cont.innerHTML = html;
+
+  // Open first card
+  if (G.insView !== 'all' && catKeys[0]) {
+    const b = document.getElementById(`ib-${catKeys[0]}`);
+    if (b) b.classList.add('open');
+  }
+}
+
+function renderPhilosophy(cont, ins) {
+  const philos = [
+    { key:'buffett_picks', icon:'🧠', color:'#d4a054', name:'Warren Buffett', tag:'Value Investing',
+      criteria:['Strong competitive moat / brand','Consistent earnings >3 years','Low debt-to-equity','ROE >15%','Promoter conviction','Undervalued vs intrinsic value'] },
+    { key:'lynch_picks', icon:'📚', color:'var(--green)', name:'Peter Lynch', tag:'Growth at Reasonable Price',
+      criteria:['Earnings growing faster than P/E','Under-followed by analysts','SME or mid-cap','PEG <1','Relatable business','Hidden gem potential'] },
+    { key:'bogle_picks', icon:'📊', color:'var(--blue)', name:'John Bogle', tag:'Index & Passive Investing',
+      criteria:['Sector leader / index-eligible','Stable dividends','Low operating costs','Long-term fundamentals','No excessive leverage','Broad market exposure'] },
+  ];
+
+  let html = '<div class="phi-wrap"><div class="phi-grid">';
+  philos.forEach(p => {
+    const items = ins[p.key] || [];
+    html += `<div class="phi-card">
+      <div class="phi-hdr">
+        <div class="phi-avatar" style="color:${p.color}">${p.icon}</div>
+        <div>
+          <div class="phi-name" style="color:${p.color}">${p.name}</div>
+          <div class="phi-sub">${p.tag} — ${items.length} picks</div>
+        </div>
+      </div>
+      <div class="phi-criteria">
+        <div class="phi-crit-lbl">Selection Criteria</div>
+        ${p.criteria.map(c=>`<div class="phi-crit-item">✓ ${c}</div>`).join('')}
+      </div>
+      <div class="phi-body">
+        ${!items.length
+          ? `<div style="padding:14px 0;color:var(--text3);font-size:11px;text-align:center">No picks today</div>`
+          : items.map(it=>`<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+              <div style="display:flex;gap:6px;align-items:center;margin-bottom:2px">
+                <strong style="color:var(--accent2)">${esc(it.symbol||'–')}</strong>
+                <span class="signal-tag ${sigCls(it.signal)}">${esc(it.signal||'')}</span>
+              </div>
+              <div style="font-size:11px;color:var(--text2);line-height:1.5">${esc((it.headline||'').slice(0,100))}</div>
+            </div>`).join('')}
+      </div>
+    </div>`;
+  });
+  html += '</div></div>';
+  cont.innerHTML = html;
+}
+
+function toggleIns(id) {
+  const b = document.getElementById(id);
+  if (b) b.classList.toggle('open');
+}
+function sigCls(s) {
+  if (!s) return 's-neu';
+  const l = s.toLowerCase();
+  return l.includes('positive') ? 's-pos' : l.includes('negative') ? 's-neg' : 's-neu';
+}
+
+// ════════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════════
+function setMain(tab) {
+  G.main = tab;
+  $$('.nav-tab').forEach((el,i) =>
+    el.classList.toggle('on', ['nse','bse','combined','important','opportunities','insights','about'][i] === tab));
+  $$('.pane').forEach(p => p.classList.remove('on'));
+  const p = $(`pane-${tab}`);
+  if (p) p.classList.add('on');
+
+  const hasSidebar = ['nse','bse','combined'].includes(tab);
+  $('sidebar').style.display = hasSidebar ? '' : 'none';
+  if (hasSidebar) buildSidebar();
+
+  if (tab === 'nse')      renderNSE();
+  else if (tab === 'bse') renderBSE();
+  else if (tab === 'combined') renderCombined();
+  else if (tab === 'important') renderImportant();
+  else if (tab === 'opportunities') renderOpps();
+  else if (tab === 'insights') renderInsights();
+}
+
+// ════════════════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const $$ = sel => document.querySelectorAll(sel);
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmt(s) {
+  if (!s) return '–';
+  try {
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return String(s).slice(0,16);
+    return d.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});
+  } catch { return String(s).slice(0,16) }
+}
+function empty(icon, title, desc) {
+  return `<div class="empty-state"><div class="empty-icon">${icon}</div><div class="empty-title">${title}</div><div class="empty-desc">${desc}</div></div>`;
+}
+
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  setInterval(loadData, 5 * 60 * 1000); // auto-refresh every 5 min
+  loadData();
+});
+</script>
+</body>
+</html>
